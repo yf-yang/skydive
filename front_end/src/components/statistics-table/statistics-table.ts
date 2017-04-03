@@ -2,10 +2,10 @@ import Vue from 'vue';
 import { Component, Prop, Watch } from 'vue-property-decorator';
 
 interface Field {
-  name: string[],
-  label: string,
-  show: boolean,
-  showChanged: boolean
+  name: string[];
+  label: string;
+  show: boolean;
+  showChanged: boolean;
 }
 
 @Component({
@@ -17,7 +17,7 @@ export class StatisticsTable extends Vue {
   object: {};
 
   fields: Field[];
-  defaultFields: string[]
+  defaultFields: string[];
 
   data() {
     return {
@@ -41,7 +41,7 @@ export class StatisticsTable extends Vue {
   watchFields() {
 
     if (this.zeroMetrics) {
-      var self = this;
+      let self = this;
       this.fields.forEach(function (f) {
         if (self.defaultFields.indexOf(f.label) !== -1) {
           f.show = true;
@@ -63,7 +63,7 @@ export class StatisticsTable extends Vue {
   }
 
   get zeroMetrics() {
-    var self = this;
+    let self = this;
     return this.fields.reduce(function (zero, f) {
       if (!self.isTime(f) && f.show === true) {
         zero = false;
@@ -84,9 +84,9 @@ export class StatisticsTable extends Vue {
 
   generateFields() {
     // at creation show only fields that have a value gt 0
-    var self = this;
+    let self = this;
     Object.getOwnPropertyNames(this.object).forEach(function (key) {
-      var f = {
+      let f = {
         name: [key],
         label: key.split('/')[1],
         show: false,
@@ -107,9 +107,9 @@ export class StatisticsTable extends Vue {
     // show field automatically if some value is gt 0
     // unless it has been hidden or showed manually by
     // the user.
-    var self = this;
+    let self = this;
     this.fields.forEach(function (f) {
-      var newVal = self.object[f.name[0]];
+      let newVal = self.object[f.name[0]];
       if (f.showChanged === false) {
         if (newVal > 0 || self.isTime(f)) {
           f.show = true;

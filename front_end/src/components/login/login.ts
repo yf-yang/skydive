@@ -8,10 +8,10 @@ import { notificationMixin } from '../notifications/notifications';
   template: require('./login.html')
 })
 export class LoginComponent extends Vue {
-  name = 'Login'
+  name = 'Login';
 
   login() {
-    var self = this;
+    let self = this;
     $.ajax({
       url: '/login',
       data: $(this.$el).serialize(),

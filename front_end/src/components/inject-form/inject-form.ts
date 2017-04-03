@@ -22,10 +22,10 @@ class InjectForm extends Vue implements NotificationMixinContract {
 
   data() {
     return {
-      node1: "",
-      node2: "",
+      node1: '',
+      node2: '',
       count: 1,
-      type: "icmp",
+      type: 'icmp',
     };
   }
 
@@ -48,7 +48,7 @@ class InjectForm extends Vue implements NotificationMixinContract {
 
   get error() {
     if (!this.node1 || !this.node2) {
-      return "Source and destination interfaces must be selected";
+      return 'Source and destination interfaces must be selected';
     } else {
       return;
     }
@@ -78,28 +78,28 @@ class InjectForm extends Vue implements NotificationMixinContract {
   }
 
   reset() {
-    var self = this;
-    this.node1 = this.node2 = "";
+    let self = this;
+    this.node1 = this.node2 = '';
     this.count = 1;
-    this.type = "icmp";
+    this.type = 'icmp';
   }
 
   inject() {
-    var self = this;
+    let self = this;
     if (this.error) {
       this.$error({ message: this.error });
       return;
     }
     $.ajax({
-      dataType: "json",
+      dataType: 'json',
       url: '/api/injectpacket',
       data: JSON.stringify({
-        "Src": "G.V('" + this.node1 + "')",
-        "Dst": "G.V('" + this.node2 + "')",
-        "Type": this.type,
-        "Count": this.count
+        'Src': 'G.V(\'' + this.node1 + '\')',
+        'Dst': 'G.V(\'' + this.node2 + '\')',
+        'Type': this.type,
+        'Count': this.count
       }),
-      contentType: "application/json; charset=utf-8",
+      contentType: 'application/json; charset=utf-8',
       method: 'POST',
     })
       .then(function () {

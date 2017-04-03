@@ -8,7 +8,7 @@ class Notification extends Vue {
   timeout: number;
 
   mounted() {
-    var self = this;
+    let self = this;
     if (self.notification.timeout === false)
       return;
     this.timeout = window.setTimeout(function () {
@@ -17,7 +17,7 @@ class Notification extends Vue {
   }
 
   get css() {
-    return "alert-" + this.notification.type;
+    return 'alert-' + this.notification.type;
   }
 
   close() {
@@ -32,12 +32,12 @@ class Notification extends Vue {
   components: {
     notification: Notification,
   },
-  template: require("./notifications.html")
+  template: require('./notifications.html')
 })
 class Notifications extends Vue {
 
   get notifications() {
-    return this.$store.getters.notifications
+    return this.$store.getters.notifications;
   }
 }
 
@@ -80,7 +80,6 @@ export const notificationMixin = {
       }, options));
     }
   }
-}
-
+};
 
 export function register() { Vue.component('notifications', Notifications); }

@@ -28,8 +28,8 @@ class FilterSelector extends Vue implements ApiMixinContract {
 
   data() {
     return {
-      key: "",
-      value: "",
+      key: '',
+      value: '',
     };
   }
 
@@ -38,13 +38,13 @@ class FilterSelector extends Vue implements ApiMixinContract {
   }
 
   keySuggestions() {
-    return this.$topologyQuery(this.query + ".Keys()");
+    return this.$topologyQuery(this.query + '.Keys()');
   }
 
   valueSuggestions() {
     if (!this.key)
       return $.Deferred().resolve([]);
-    return this.$topologyQuery(this.query + ".Values('" + this.key + "').Dedup()")
+    return this.$topologyQuery(this.query + '.Values(\'' + this.key + '\').Dedup()')
       .then(function (values) {
         return values.map(function (v) { return v.toString(); });
       });
@@ -53,7 +53,7 @@ class FilterSelector extends Vue implements ApiMixinContract {
   add() {
     if (this.key && this.value) {
       this.$emit('add', this.key, this.value);
-      this.key = this.value = "";
+      this.key = this.value = '';
     }
   }
 
@@ -84,16 +84,16 @@ class HighlightMode extends Vue {
           label: 'Follow L3',
         }
       ]
-    }
+    };
   }
 
   get buttonText() {
-    var self = this;
+    let self = this;
     return this.highlightModes.reduce(function (acc, m) {
-      if (m.field == self.value)
+      if (m.field === self.value)
         return m.label;
       return acc;
-    }, "");
+    }, '');
   }
 
   select(mode) {
@@ -116,7 +116,7 @@ class IntervalButton extends Vue {
   }
 
   get intervalText() {
-    return "Every " + this.value / 1000 + "s";
+    return 'Every ' + this.value / 1000 + 's';
   }
 
   select(value) {
@@ -140,14 +140,14 @@ class LimitButton extends Vue {
 
   get buttonText() {
     if (this.value === 0) {
-      return "No limit";
+      return 'No limit';
     }
-    return "Limit: " + this.value;
+    return 'Limit: ' + this.value;
   }
 
   valueText(value) {
     if (value === 0)
-      return "No limit";
+      return 'No limit';
     return value;
   }
 
@@ -179,7 +179,7 @@ class FlowTable extends Vue implements ApiMixinContract {
 
   queryResults: any[];
   queryError: string;
-  limit: number
+  limit: number;
   sortBy: string[];
   sortOrder: number;
   interval: number;
@@ -193,7 +193,7 @@ class FlowTable extends Vue implements ApiMixinContract {
   data() {
     return {
       queryResults: [],
-      queryError: "",
+      queryError: '',
       limit: 30,
       sortBy: null,
       sortOrder: -1,
@@ -350,14 +350,14 @@ class FlowTable extends Vue implements ApiMixinContract {
   }
 
   get filteredQuery() {
-    var filteredQuery = this.timedQuery;
-    for (var k of Object.keys(this.filters)) {
+    let filteredQuery = this.timedQuery;
+    for (let k of Object.keys(this.filters)) {
       if (this.filters[k].length === 1) {
-        filteredQuery += ".Has('" + k + "', '" + this.filters[k][0] + "')";
+        filteredQuery += '.Has(\'' + k + '\', \'' + this.filters[k][0] + '\')';
       }
       else if (this.filters[k].length > 1) {
-        var values = this.filters[k].join("','");
-        filteredQuery += ".Has('" + k + "', within('" + values + "'))";
+        let values = this.filters[k].join('\',\'');
+        filteredQuery += '.Has(\'' + k + '\', within(\'' + values + '\'))';
       }
     }
     return filteredQuery;
@@ -383,7 +383,7 @@ class FlowTable extends Vue implements ApiMixinContract {
   }
 
   getFlows() {
-    var self = this;
+    let self = this;
     this.$topologyQuery(this.limitedQuery)
       .then(function (flows) {
         // much faster than replacing
@@ -394,14 +394,14 @@ class FlowTable extends Vue implements ApiMixinContract {
         });
       })
       .fail(function (r) {
-        self.queryError = r.responseText + "Query was : " + self.limitedQuery;
+        self.queryError = r.responseText + 'Query was : ' + self.limitedQuery;
         self.stopAutoRefresh();
       });
   }
 
   setQueryTime(query) {
     if (this.time !== 0) {
-      return query.replace("G.", "G.At(" + this.time + ").");
+      return query.replace('G.', 'G.At(' + this.time + ').');
     }
     return query;
   }
@@ -420,8 +420,8 @@ class FlowTable extends Vue implements ApiMixinContract {
   }
 
   highlightNodes(obj, bool) {
-    var self = this,
-      query = "G.Flows().Has('" + this.highlightMode + "', '" + obj[this.highlightMode] + "').Nodes()";
+    let self = this,
+      query = 'G.Flows().Has(\'' + this.highlightMode + '\', \'' + obj[this.highlightMode] + '\').Nodes()';
     query = this.setQueryTime(query);
     this.$topologyQuery(query)
       .then(function (nodes) {
@@ -430,9 +430,9 @@ class FlowTable extends Vue implements ApiMixinContract {
             self.$store.commit('highlight', n.ID);
           else
             self.$store.commit('unhighlight', n.ID);
-          //if (n.Metadata.TID == obj.NodeTID) {
-          //topologyLayout.SetNodeClass(n.ID, "current", bool);
-          //}
+          // if (n.Metadata.TID == obj.NodeTID) {
+          //   topologyLayout.SetNodeClass(n.ID, 'current', bool);
+          // }
         });
       });
   }
@@ -441,7 +441,7 @@ class FlowTable extends Vue implements ApiMixinContract {
     if (!this.sortBy) {
       return 0;
     }
-    var f1FieldValue = this.fieldValue(f1, this.sortBy),
+    let f1FieldValue = this.fieldValue(f1, this.sortBy),
       f2FieldValue = this.fieldValue(f2, this.sortBy);
     if (f1FieldValue < f2FieldValue)
       return -1 * this.sortOrder;
@@ -451,9 +451,9 @@ class FlowTable extends Vue implements ApiMixinContract {
   }
 
   fieldValue(object, paths) {
-    for (var path of paths) {
-      var value = object;
-      for (var k of path.split(".")) {
+    for (let path of paths) {
+      let value = object;
+      for (let k of path.split('.')) {
         if (value[k] !== undefined) {
           value = value[k];
         } else {
@@ -465,7 +465,7 @@ class FlowTable extends Vue implements ApiMixinContract {
         return value;
       }
     }
-    return "";
+    return '';
   }
 
   sort(sortBy) {
@@ -516,10 +516,10 @@ class FlowTableControl extends Vue implements ApiMixinContract {
 
   data() {
     return {
-      query: "G.Flows().Sort()",
-      validatedQuery: "G.Flows().Sort()",
+      query: 'G.Flows().Sort()',
+      validatedQuery: 'G.Flows().Sort()',
       validationId: null,
-      error: "",
+      error: '',
     };
   }
 
@@ -542,11 +542,11 @@ class FlowTableControl extends Vue implements ApiMixinContract {
 
 
   validateQuery() {
-    var self = this;
+    let self = this;
     this.$topologyQuery(self.query)
       .then(function () {
         self.validatedQuery = self.query;
-        self.error = "";
+        self.error = '';
       })
       .fail(function (e) {
         self.error = e.responseText;

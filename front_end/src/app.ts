@@ -18,13 +18,13 @@ import { ConversationComponent } from './components/conversation/conversation';
 import { DiscoveryComponent } from './components/discovery/discovery';
 import { TopologyComponent } from './components/topology/topology';
 
-export var websocket = new WSHandler();
+export let websocket = new WSHandler();
 
 Vue.use(Vuex);
 Vue.use(VueRouter);
 register();
 
-export var store = new Vuex.Store({
+export let store = new Vuex.Store({
 
   state: {
     logged: null,
@@ -40,7 +40,7 @@ export var store = new Vuex.Store({
   getters: {
 
     timeHuman: function (state) {
-      var d = new Date(state.time);
+      let d = new Date(state.time);
       return d.toLocaleTimeString();
     },
 
@@ -83,7 +83,7 @@ export var store = new Vuex.Store({
     },
 
     service: function (state, service) {
-      state.service = service.charAt(0).toUpperCase() + service.slice(1);;
+      state.service = service.charAt(0).toUpperCase() + service.slice(1);
     },
 
     version: function (state, version) {
@@ -110,7 +110,7 @@ export var store = new Vuex.Store({
 
 });
 
-var routes = [
+let routes = [
   { path: '/login', component: LoginComponent },
   {
     path: '/logout',
@@ -128,7 +128,7 @@ var routes = [
   { path: '*', redirect: '/topology' }
 ];
 
-var router = new VueRouter({
+let router = new VueRouter({
   linkActiveClass: 'active',
   routes: routes
 });
@@ -138,7 +138,7 @@ var router = new VueRouter({
 router.beforeEach(function (to, from, next) {
   if (store.state.logged === false && to.path !== '/login')
     next('/login');
-  else if (store.state.logged === true && to.path == '/login')
+  else if (store.state.logged === true && to.path === '/login')
     next(false);
   else
     next();
@@ -159,7 +159,7 @@ class App extends Vue implements ApiMixinContract, NotificationMixinContract {
 
   $topologyQuery: (q: string) => JQueryPromise<any>;
   $captureList: () => JQueryPromise<any>;
-  $captureCreate: (q:string,n:string, d:string) => JQueryPromise<any>;
+  $captureCreate: (q: string, n: string, d: string) => JQueryPromise<any>;
   $captureDelete: (uuid: string) => JQueryPromise<any>;
 
   $notify: (options: NotifOptions) => void;
@@ -171,7 +171,7 @@ class App extends Vue implements ApiMixinContract, NotificationMixinContract {
   store = store;
 
   created() {
-    var self = this;
+    let self = this;
     // global handler to detect authorization errors
     $(document).ajaxError(function (evt, e) {
       switch (e.status) {
@@ -187,8 +187,8 @@ class App extends Vue implements ApiMixinContract, NotificationMixinContract {
   }
 
   @Watch('logged')
-  watchLogged(newVal:boolean) {
-    var self = this;
+  watchLogged(newVal: boolean) {
+    let self = this;
     if (newVal === true) {
       websocket.connect();
       this.checkAPI();
@@ -196,7 +196,7 @@ class App extends Vue implements ApiMixinContract, NotificationMixinContract {
       router.push('/topology');
       this.$success({ message: 'Connected' });
       // check if the Analyzer supports history
-      this.$topologyQuery("G.At('-1m').V().Limit(1)")
+      this.$topologyQuery('G.At(\'-1m\').V().Limit(1)')
         .then(function () {
           self.$store.commit('history', true);
         })
@@ -215,15 +215,15 @@ class App extends Vue implements ApiMixinContract, NotificationMixinContract {
   checkAPI() {
     let self = this;
     return $.ajax({
-      dataType: "json",
+      dataType: 'json',
       url: '/api',
     })
       .then(function (r) {
         if (!self.$store.state.logged)
           self.$store.commit('login');
-        if (self.$store.state.service != r.Service)
+        if (self.$store.state.service !== r.Service)
           self.$store.commit('service', r.Service);
-        if (self.$store.state.version != r.Version)
+        if (self.$store.state.version !== r.Version)
           self.$store.commit('version', r.Version);
         return r;
       });
@@ -231,7 +231,7 @@ class App extends Vue implements ApiMixinContract, NotificationMixinContract {
 
 }
 
-var app = new App();
+let app = new App();
 
 
 $(document).ready(function () {

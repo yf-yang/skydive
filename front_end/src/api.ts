@@ -1,13 +1,13 @@
 import * as $ from 'jquery';
 import Vue from 'vue';
 import Component from 'vue-class-component';
-import { NotifOptions, NotificationMixinContract } from './components/notifications/notifications'
+import { NotifOptions, NotificationMixinContract } from './components/notifications/notifications';
 
 export interface ApiMixinContract extends Vue {
   $topologyQuery: (query: string) => JQueryPromise<any>;
   $captureList: () => JQueryPromise<any>;
   $captureCreate: (query: string, name: string, desc: string, bpf: string) => JQueryPromise<any>;
-  $captureDelete: (uuid: string) => JQueryPromise<any>
+  $captureDelete: (uuid: string) => JQueryPromise<any>;
 }
 
 
@@ -16,10 +16,10 @@ export const apiMixin = {
 
     $topologyQuery: function (this: ApiMixinContract, gremlinQuery: string) {
       return $.ajax({
-        dataType: "json",
+        dataType: 'json',
         url: '/api/topology',
-        data: JSON.stringify({ "GremlinQuery": gremlinQuery }),
-        contentType: "application/json; charset=utf-8",
+        data: JSON.stringify({ 'GremlinQuery': gremlinQuery }),
+        contentType: 'application/json; charset=utf-8',
         method: 'POST',
       })
         .then(function (data) {
@@ -33,11 +33,11 @@ export const apiMixin = {
     },
 
     $captureList: function (this: NotificationMixinContract) {
-      var self = this;
+      let self = this;
       return $.ajax({
-        dataType: "json",
+        dataType: 'json',
         url: '/api/capture',
-        contentType: "application/json; charset=utf-8",
+        contentType: 'application/json; charset=utf-8',
         method: 'GET',
       })
         .fail(function (e) {
@@ -47,9 +47,9 @@ export const apiMixin = {
     },
 
     $captureCreate: function (this: NotificationMixinContract, query: string, name: string, description: string, bpf: string) {
-      var self = this;
+      let self = this;
       return $.ajax({
-        dataType: "json",
+        dataType: 'json',
         url: '/api/capture',
         data: JSON.stringify({
           GremlinQuery: query,
@@ -57,7 +57,7 @@ export const apiMixin = {
           Description: description || null,
           BPFFilter: bpf || null
         }),
-        contentType: "application/json; charset=utf-8",
+        contentType: 'application/json; charset=utf-8',
         method: 'POST',
       })
         .then(function (data) {
@@ -71,7 +71,7 @@ export const apiMixin = {
     },
 
   $captureDelete: function(this: NotificationMixinContract, uuid: string) {
-      var self = this;
+      let self = this;
       return $.ajax({
         dataType: 'text',
         url: '/api/capture/' + uuid + '/',
@@ -83,5 +83,5 @@ export const apiMixin = {
         });
     }
   }
-}
+};
 

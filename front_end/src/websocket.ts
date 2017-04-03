@@ -7,7 +7,7 @@ export class WSHandler {
   connected: JQueryDeferred<{}>;
   connecting: boolean;
   disconnected: JQueryDeferred<{}>;
-  msgHandlers: { [namespace: string]: ((msg: string) => void)[]; }
+  msgHandlers: { [namespace: string]: ((msg: string) => void)[]; };
   discHandlers: (() => void)[];
   connHandlers: (() => void)[];
 
@@ -22,9 +22,9 @@ export class WSHandler {
   }
 
   connect() {
-    var self = this;
+    let self = this;
 
-    if (this.conn && this.conn.readyState == WebSocket.OPEN) {
+    if (this.conn && this.conn.readyState === WebSocket.OPEN) {
       return;
     }
 
@@ -32,7 +32,7 @@ export class WSHandler {
   }
 
   _connect() { 
-    var self = this;
+    let self = this;
 
     this.connected = $.Deferred();
     this.connected.then(function () {
@@ -48,7 +48,7 @@ export class WSHandler {
     });
     this.connecting = true;
 
-    this.conn = new WebSocket("ws://" + this.host + "/ws");
+    this.conn = new WebSocket('ws://' + this.host + '/ws');
     this.conn.onopen = function () {
       self.connecting = false;
       self.connected.resolve(true);
@@ -66,7 +66,7 @@ export class WSHandler {
       }
     };
     this.conn.onmessage = function (r) {
-      var msg = JSON.parse(r.data);
+      let msg = JSON.parse(r.data);
       if (self.msgHandlers[msg.Namespace]) {
         self.msgHandlers[msg.Namespace].forEach(function (callback) {
           callback(msg);
