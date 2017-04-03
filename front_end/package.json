@@ -1,0 +1,62 @@
+{
+  "name": "skydive_frontend",
+  "description": "Skydive visualisation front-end",
+  "version": "1.0.0",
+  "author": "",
+  "private": true,
+  "engines": {
+    "node": ">=6",
+    "npm": ">=3"
+  },
+  "scripts": {
+    "build": "cross-env NODE_ENV=production npm run clean && npm run build:parts && npm run process:html",
+    "build:parts": "npm run compile",
+    "clean": "rimraf dist",
+    "compile": "webpack --config config/webpack.config.prod.js",
+    "dev": "webpack-dev-server --hot --inline",
+    "lint": "tslint src/**/*.ts",
+    "process:html": "htmlprocessor src/index.html -o dist/index.html",
+    "serve": "http-server dist/ -o"
+  },
+  "dependencies": {
+    "@types/d3": "^3.5.38",
+    "@types/jquery": "^2.0.41",
+    "@types/lscache": "^1.0.29",
+    "bootstrap": "~3.3.7",
+    "bootstrap-slider": "^9.7.2",
+    "bootstrap-switch": "^3.3.4",
+    "d3": "^3.5.17",
+    "font-awesome": "^4.7.0",
+    "jquery": "^2.2.4",
+    "jquery-ui": "^1.12.1",
+    "lscache": "^1.1.0",
+    "vue": "~2.2.4",
+    "vue-class-component": "~5.0.0",
+    "vue-property-decorator": "^4.0.0",
+    "vue-router": "~2.3.0",
+    "vuex": "^2.2.1"
+  },
+  "devDependencies": {
+    "@types/node": "^7.0.12",
+    "awesome-typescript-loader": "~3.1.2",
+    "clean-css-cli": "~4.0.9",
+    "compression-webpack-plugin": "~0.3.2",
+    "copy-webpack-plugin": "~4.0.1",
+    "cross-env": "~3.2.4",
+    "es6-promise": "~4.1.0",
+    "file-loader": "~0.10.1",
+    "htmlprocessor": "~0.2.4",
+    "http-server": "~0.9.0",
+    "json-loader": "~0.5.4",
+    "lodash.merge": "~4.6.0",
+    "ncp": "~2.0.0",
+    "raw-loader": "~0.5.1",
+    "rimraf": "~2.6.1",
+    "ts-loader": "~2.0.2",
+    "tslint": "~4.5.1",
+    "tslint-loader": "~3.4.3",
+    "typescript": "~2.2.1",
+    "webpack": "~2.2.1",
+    "webpack-dev-server": "~2.4.2"
+  }
+}
