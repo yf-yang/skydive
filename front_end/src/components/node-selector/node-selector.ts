@@ -1,58 +1,47 @@
-Vue.component('node-selector', {
+import * as $ from 'jquery';
+import Vue from 'vue';
+import { Component, Prop } from 'vue-property-decorator';
 
-  props: {
-    value: {
-      type: String,
-      required: true,
-    },
-    placeholder: {
-      type: String,
-    },
-    attr: {
-      type: String,
-      default: "Metadata.TID"
-    }
-  },
+@Component({
+  template: require('./node-selector.html')
+})
+export class NodeSelector extends Vue {
+  @Prop()
+  value: string;
 
-  template: '\
-    <div style="position:relative">\
-      <input class="form-control input-sm has-left-icon"\
-             readonly\
-             @focus="select"\
-             :placeholder="placeholder"\
-             :value="value" />\
-      <span class="fa fa-crosshairs form-control-feedback"></span>\
-    </div>\
-  ',
+  @Prop()
+  placeholder: string;
 
-  methods: {
+  @Prop()
+  attr: string = "Metadata.TID";
 
-    select: function() {
-      var self = this;
-      $(".topology-d3").off('click');
-      $(".topology-d3").on('click', function(e) {
-        var value, node;
-        if (! e.target.__data__) {
+  select() {
+    var self = this;
+    $(".topology-d3").off('click');
+    $(".topology-d3").on('click', function (e) {
+      var value, node;
+      if ((<any>!e.target).__data__) {
+        return;
+      } else {
+        node = value = (<any> e.target).__data__;
+      }
+
+      self.attr.split(".").forEach(function (key) {
+        if (!value[key]) {
           return;
         } else {
-          node = value = e.target.__data__;
+          value = value[key];
         }
-
-        self.attr.split(".").forEach(function(key) {
-          if (! value[key]) {
-            return;
-          } else {
-            value = value[key];
-          }
-        });
-
-        self.$emit('input', value);
-        self.$emit('selected', node);
-        e.preventDefault();
-        $(".topology-d3").off('click');
       });
-    }
 
+      self.$emit('input', value);
+      self.$emit('selected', node);
+      e.preventDefault();
+      $(".topology-d3").off('click');
+    });
   }
 
-});
+}
+
+
+export function register() { Vue.component('node-selector', NodeSelector); }

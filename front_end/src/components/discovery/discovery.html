@@ -1,0 +1,40 @@
+<div class="discovery">
+    <div class="col-sm-8 fill content">
+        <div id="sequence"></div>
+        <div class="discovery-d3"></div>
+    </div>
+    <div class="col-sm-4 fill info">
+        <div class="left-cont">
+            <div class="left-panel">
+                <div class="title-left-panel">Type</div>
+                <form>
+                    <div class="form-group">
+                        <label class="radio-inline">
+                  <input type="radio" name="type" value="bytes" v-model="type"> Bytes
+                </label>
+                        <label class="radio-inline">
+                  <input type="radio" name="type" value="packets" v-model="type"> Packets
+                </label>
+                    </div>
+                </form>
+            </div>
+            <div class="left-panel">
+                <div class="title-left-panel">Mode</div>
+                <form>
+                    <div class="form-group">
+                        <label class="radio-inline">
+                  <input type="radio" name="mode" value="size" v-model="mode"> Size
+                </label>
+                        <label class="radio-inline">
+                  <input type="radio" name="mode" value="count" v-model="mode"> Count
+                </label>
+                    </div>
+                </form>
+            </div>
+            <div class="left-panel" v-if="protocolData">
+                <div class="title-left-panel">Protocol Data</div>
+                <object-detail :object="protocolData"></object-detail>
+            </div>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,25 @@
+<button-dropdown class="filter-selector" :auto-close="false" :b-class="{'btn-xs': true, 'active': hasFilters}">
+    <span slot="button-text">
+        <i class="fa fa-filter" aria-hidden="true"></i>
+      </span>
+    <li>
+        <form class="filter-form form-inline" @submit.prevent="add">
+            <autocomplete :suggestions="keySuggestions" placeholder="Filter by flow key..." v-model="key">
+            </autocomplete>
+            <autocomplete :suggestions="valueSuggestions" placeholder="key value..." v-model="value">
+            </autocomplete>
+            <button type="submit" class="btn btn-primary btn-sm">
+            <i class="fa fa-plus" aria-hidden="true" title="Add filter"></i>
+          </button>
+        </form>
+    </li>
+    <li v-if="hasFilters" role="separator" class="divider"></li>
+    <li v-for="(values, key) in filters">
+        <a href="#">
+            <small>{{key}}</small>
+            <span class="label label-info" v-for="(value, index) in values" @click.stop="remove(key, index)">{{value}}
+            <i class="fa fa-close" aria-hidden="true"></i>
+          </span>
+        </a>
+    </li>
+</button-dropdown>

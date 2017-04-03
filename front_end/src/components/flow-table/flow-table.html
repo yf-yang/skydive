@@ -1,0 +1,27 @@
+<dynamic-table :rows="sortedResults" :error="queryError" :sortOrder="sortOrder" :sortBy="sortBy" :fields="fields" @sort="sort"
+    @order="order" @toggleField="toggleField">
+    <template slot="empty">No flows found</template>
+    <template slot="row" scope="flows">
+        <tr class="flow-row" :class="{'flow-detail': hasFlowDetail(flows.row)}" @click="toggleFlowDetail(flows.row)" @mouseenter="highlightNodes(flows.row, true)"
+            @mouseleave="highlightNodes(flows.row, false)">
+            <td v-for="field in flows.visibleFields">
+                {{fieldValue(flows.row, field.name)}}
+            </td>
+        </tr>
+        <tr class="flow-detail-row" v-if="hasFlowDetail(flows.row)" @mouseenter="highlightNodes(flows.row, true)" @mouseleave="highlightNodes(flows.row, false)">
+            <td :colspan="flows.visibleFields.length">
+                <object-detail :object="flows.row"></object-detail>
+            </td>
+        </tr>
+    </template>
+    <template slot="actions">
+        <filter-selector :query="value" :filters="filters" @add="addFilter" @remove="removeFilter"></filter-selector>
+        <limit-button v-model="limit"></limit-button>
+        <highlight-mode v-model="highlightMode"></highlight-mode>
+        <button-state class="btn-xs pull-right" v-model="autoRefresh" enabled-text="Auto refresh on" disabled-text="Auto refresh off"></button-state>
+        <interval-button v-if="autoRefresh" class="pull-right" v-model="interval"></interval-button>
+        <button class="btn btn-default btn-xs pull-right" type="button" @click="getFlows" title="Refresh flows" v-if="!autoRefresh">
+          <i class="fa fa-refresh" aria-hidden="true"></i>
+        </button>
+    </template>
+</dynamic-table>

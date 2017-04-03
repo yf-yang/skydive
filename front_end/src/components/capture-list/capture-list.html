@@ -1,0 +1,7 @@
+<div class="sub-left-panel" v-if="count > 0">
+    <ul class="capture-list">
+        <li class="capture-item" v-for="capture in captures" :id="capture.UUID">
+            <capture :capture="capture"></capture>
+        </li>
+    </ul>
+</div>

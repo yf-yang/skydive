@@ -1,36 +1,24 @@
 /* jshint multistr: true */
+import Vue from 'vue';
+import Component from 'vue-class-component';
+import { notificationMixin } from '../notifications/notifications';
 
-var LoginComponent = {
-
-  name: 'Login',
-
+@Component({
   mixins: [notificationMixin],
+  template: require('./login.html')
+})
+export class LoginComponent extends Vue {
+  name = 'Login'
 
-  template: '\
-    <form class="form-signin" @submit.prevent="login">\
-      <h2 class="form-signin-heading">Please sign in</h2>\
-      <label for="login" class="sr-only">Login</label>\
-      <input type="text" name="username" class="form-control" placeholder="Login" required autofocus>\
-      <label for="password" class="sr-only">Password</label>\
-      <input type="password" name="password" class="form-control" placeholder="Password" required>\
-      <button class="btn btn-lg btn-primary btn-block" type="submit">Sign in</button>\
-    </form>\
-  ',
-
-  methods: {
-
-    login: function() {
-      var self = this;
-      $.ajax({
-        url: '/login',
-        data: $(this.$el).serialize(),
-        method: 'POST',
-      })
-      .then(function(data) {
+  login() {
+    var self = this;
+    $.ajax({
+      url: '/login',
+      data: $(this.$el).serialize(),
+      method: 'POST',
+    })
+      .then(function (data) {
         self.$store.commit('login');
       });
-    },
-
   }
-
-};
+}

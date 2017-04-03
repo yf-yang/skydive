@@ -1,31 +1,16 @@
 /* jshint multistr: true */
+import Vue from 'vue';
+import { Component, Prop } from 'vue-property-decorator';
 
-Vue.component('object-detail', {
+@Component({
+  template: require('./object-detail.html')
+})
+export class ObjectDetail extends Vue {
+  @Prop
+  object: {};
 
-  name: 'object-detail',
+  name = 'object-detail';
 
-  props: {
+}
 
-    object: {
-      type: Object,
-      required: true,
-    }
-
-  },
-
-  template: '\
-    <div class="object-detail">\
-      <div class="object-key-value" v-for="(value, key) in object" :class="key.toLowerCase()">\
-        <div v-if="typeof value == \'object\'" class="object-sub-detail">\
-          <span class="object-key">{{key}}</span>\
-          <object-detail :object="value"></object-detail>\
-        </div>\
-        <div v-else>\
-          <span class="object-key">{{key}}</span> :\
-          <span class="object-value" :class="typeof(value)">{{value}}</span>\
-        </div>\
-      </div>\
-    </div>\
-  ',
-
-});
+export function register() { Vue.component('object-detail', ObjectDetail); }

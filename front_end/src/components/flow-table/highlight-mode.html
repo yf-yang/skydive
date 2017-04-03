@@ -1,0 +1,9 @@
+<button-dropdown :text="buttonText" b-class="btn-xs">
+    <li v-for="mode in highlightModes">
+        <a href="#" @click="select(mode)">
+            <small><i class="fa fa-check text-success pull-right"
+             aria-hidden="true" v-show="value == mode.field"></i>
+          {{mode.label}}</small>
+        </a>
+    </li>
+</button-dropdown>

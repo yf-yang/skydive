@@ -1,0 +1,24 @@
+<div class="capture-item">
+  <div class="capture-title">
+    <i class="capture-action capture-delete fa fa-trash" @click="remove(capture)">
+        </i>
+    <i class="capture-action fa" title="Monitor flows" v-if="canShowFlows" :class="{'fa-expand': !showFlows, 'fa-compress': showFlows}"
+      @click="showFlows = !showFlows"></i> {{capture.UUID}}
+  </div>
+  <dl class="dl-horizontal">
+    <dt v-if="capture.Name">Name</dt>
+    <dd v-if="capture.Name">{{capture.Name}}</dd>
+    <dt>Query</dt>
+    <dd class="query" @mouseover="highlightCaptureNodes(capture, true)" @mouseout="highlightCaptureNodes(capture, false)" @click="(canShowFlows ? showFlows = !showFlows : null)">
+      {{capture.GremlinQuery}}
+    </dd>
+    <dt v-if="capture.Description">Desc</dt>
+    <dd v-if="capture.Description">{{capture.Description}}</dd>
+    <dt v-if="capture.BPFFilter">BPF</dt>
+    <dd v-if="capture.BPFFilter">{{capture.BPFFilter}}</dd>
+    <dt v-if="showFlows">Flows</dt>
+    <dd v-if="showFlows">
+      <flow-table :value="capture.GremlinQuery + '.Flows().Dedup()'"></flow-table>
+    </dd>
+  </dl>
+</div>

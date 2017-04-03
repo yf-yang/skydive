@@ -1,0 +1,4 @@
+<button type="button" class="btn btn-default" :class="{'active': value}"    @click="change">
+      <span v-if="value">{{enabledText}}</span>
+      <span v-else>{{disabledText}}</span>
+    </button>
