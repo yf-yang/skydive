@@ -51,7 +51,7 @@ class Tabs extends Vue {
   }
 
   removePane(pane) {
-    var idx = this.panes.indexOf(pane);
+    let idx = this.panes.indexOf(pane);
     this.panes.splice(idx, 1);
     if (idx <= this.selected) {
       this.selected -= 1;

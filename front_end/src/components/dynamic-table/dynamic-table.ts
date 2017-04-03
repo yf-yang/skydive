@@ -29,7 +29,7 @@ class DynamicTable extends Vue {
     }
 
     sort(name) {
-      if (name == this.sortBy) {
+      if (name === this.sortBy) {
         this.$emit('order', this.sortOrder * -1);
       } else {
         this.$emit('sort', name);

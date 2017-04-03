@@ -20,7 +20,7 @@ import Component from 'vue-class-component';
         // be up.
         position: {
             type: String,
-            default: "auto",
+            default: 'auto',
         },
 
         // Hide the menu after clicking on some
@@ -45,13 +45,13 @@ export class ButtonDropdown extends Vue {
         return {
             open: false,
             // generate an unique id for this dropdown
-            id: "btn-group-" + Math.random().toString(36).substr(2, 9),
+            id: 'btn-group-' + Math.random().toString(36).substr(2, 9),
             dropup: false,
         };
     }
     
     mounted() {
-        var self = this;
+        let self = this;
         // close the popup if we click elsewhere
         // from the target search if any parent has the id
         $(document).on('click', function (event) {
@@ -66,17 +66,17 @@ export class ButtonDropdown extends Vue {
     toggle() {
         this.open = !this.open;
         if (this.open === true) {
-            var self = this;
+            let self = this;
             this.$nextTick(function () {
                 switch (this.position) {
-                    case "up":
+                    case 'up':
                         this.dropup = true;
                         break;
-                    case "down":
+                    case 'down':
                         this.dropup = false;
                         break;
-                    case "auto":
-                        var button = $(self.$el),
+                    case 'auto':
+                        let button = $(self.$el),
                             bottomPosition = button.offset().top + button.height(),
                             menuHeight = button.find('.dropdown-menu').height(),
                             windowHeight = $(window).height();

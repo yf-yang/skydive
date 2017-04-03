@@ -18,9 +18,9 @@ export class TopologyComponent extends Vue implements NotificationMixinContract 
   $success: (options: NotifOptions) => void;
 
   name = 'topology';
-  time: number
-  timeRange: number[]
-  collapsed: boolean
+  time: number;
+  timeRange: number[];
+  collapsed: boolean;
   layout: TopologyLayout;
   timeId: number;
   syncTopo: (t?: number) => void;
@@ -35,9 +35,9 @@ export class TopologyComponent extends Vue implements NotificationMixinContract 
   }
 
   mounted() {
-    var self = this;
+    let self = this;
     // run d3 layout
-    this.layout = new TopologyLayout(this, ".topology-d3");
+    this.layout = new TopologyLayout(this, '.topology-d3');
 
     this.syncTopo = debounce(this.layout.SyncRequest.bind(this.layout), 300);
 
@@ -45,11 +45,11 @@ export class TopologyComponent extends Vue implements NotificationMixinContract 
       handles: 'e',
       minWidth: 300,
       resize: function (event, ui) {
-        var x = ui.element.outerWidth();
-        var y = ui.element.outerHeight();
-        var ele = ui.element;
-        var factor = $(this).parent().width() - x;
-        var f2 = $(this).parent().width() * 0.02999;
+        let x = ui.element.outerWidth();
+        let y = ui.element.outerHeight();
+        let ele = ui.element;
+        let factor = $(this).parent().width() - x;
+        let f2 = $(this).parent().width() * 0.02999;
         $.each(ele.siblings(), function (idx, item) {
           ele.siblings().eq(idx).css('height', y + 'px');
           ele.siblings().eq(idx).width((factor - f2) + 'px');
@@ -59,10 +59,10 @@ export class TopologyComponent extends Vue implements NotificationMixinContract 
 
     // trigered when some component wants to highlight some nodes
     this.$store.subscribe<{ type: string, payload: any }>(function (mutation) {
-      if (mutation.type == "highlight")
-        self.layout.SetNodeClass(mutation.payload, "highlighted", true);
-      else if (mutation.type == "unhighlight")
-        self.layout.SetNodeClass(mutation.payload, "highlighted", false);
+      if (mutation.type === 'highlight')
+        self.layout.SetNodeClass(mutation.payload, 'highlighted', true);
+      else if (mutation.type === 'unhighlight')
+        self.layout.SetNodeClass(mutation.payload, 'highlighted', false);
     });
 
     // trigered when a node is selected
@@ -73,12 +73,12 @@ export class TopologyComponent extends Vue implements NotificationMixinContract 
       },
       function (newNode, oldNode) {
         if (oldNode) {
-          var old = d3.select('#node-' + oldNode.ID);
+          let old = d3.select('#node-' + oldNode.ID);
           old.classed('active', false);
           old.select('circle').attr('r', parseInt(old.select('circle').attr('r')) - 3);
         }
         if (newNode) {
-          var current = d3.select('#node-' + newNode.ID);
+          let current = d3.select('#node-' + newNode.ID);
           current.classed('active', true);
           current.select('circle').attr('r', parseInt(current.select('circle').attr('r')) + 3);
         }
@@ -328,7 +328,7 @@ TopologyLayout.prototype.LinkDistance = function(d, i) {
 =======
   @Watch('time')
   watchTime() {
-    var self = this;
+    let self = this;
     if (this.timeId) {
       window.clearTimeout(this.timeId);
       this.timeId = null;
@@ -368,7 +368,7 @@ TopologyLayout.prototype.LinkDistance = function(d, i) {
   }
 
   get topologyTime() {
-    var time = new Date();
+    let time = new Date();
     time.setMinutes(time.getMinutes() + this.time);
     time.setSeconds(0);
     time.setMilliseconds(0);
@@ -381,15 +381,15 @@ TopologyLayout.prototype.LinkDistance = function(d, i) {
 
   get topologyTimeHuman() {
     if (this.live) {
-      return "live";
+      return 'live';
     }
     return -this.time + ' min. ago (' + this.timeHuman + ')';
   }
 
   get currentNodeFlowsQuery() {
     if (this.currentNode && this.currentNode.IsCaptureAllowed())
-      return "G.V('" + this.currentNode.ID + "').Flows().Sort().Dedup()";
-    return "";
+      return 'G.V(\'' + this.currentNode.ID + '\').Flows().Sort().Dedup()';
+    return '';
   }
 
   get currentNodeMetadata() {
@@ -397,11 +397,11 @@ TopologyLayout.prototype.LinkDistance = function(d, i) {
   }
 
   get currentNodeStats() {
-    return this.extractMetadata(this.currentNode.Metadata, "Statistics");
+    return this.extractMetadata(this.currentNode.Metadata, 'Statistics');
   }
 
   get currentNodeLastStats() {
-    var s = this.extractMetadata(this.currentNode.Metadata, "LastMetric");
+    let s = this.extractMetadata(this.currentNode.Metadata, 'LastMetric');
     ['LastMetric/Start', 'LastMetric/Last'].forEach(function (k) {
       if (s[k]) {
         s[k] = new Date(s[k]).toLocaleTimeString();
@@ -411,7 +411,7 @@ TopologyLayout.prototype.LinkDistance = function(d, i) {
   }
 
   rescale(factor) {
-    var width = this.layout.width,
+    let width = this.layout.width,
       height = this.layout.height,
       translate = this.layout.zoom.translate(),
       newScale = this.layout.zoom.scale() * factor,
@@ -440,9 +440,9 @@ TopologyLayout.prototype.LinkDistance = function(d, i) {
 
   collapseAll() {
     this.collapsed = !this.collapsed;
-    var nodes = this.layout.nodes;
-    for (var i in nodes) {
-      if (nodes[i].Metadata.Type !== "host") {
+    let nodes = this.layout.nodes;
+    for (let i in nodes) {
+      if (nodes[i].Metadata.Type !== 'host') {
         continue;
       }
 <<<<<<< HEAD
@@ -470,7 +470,7 @@ TopologyLayout.prototype.LinkDistance = function(d, i) {
 
   extractMetadata(metadata: { [key: string]: string }, namespace: string, exclude?: string[]): { [key: string]: string } {
     return Object.getOwnPropertyNames(metadata).reduce(function (mdata, key) {
-      var use = true;
+      let use = true;
       if (namespace && key.search(namespace) === -1) {
         use = false;
       }

@@ -52,12 +52,12 @@ export class GNode implements d3.layout.force.Node {
 
 
     IsCaptureOn() {
-        return "Capture/ID" in this.Metadata;
+        return 'Capture/ID' in this.Metadata;
     }
 
     IsCaptureAllowed() {
-        var allowedTypes = ["device", "veth", "ovsbridge",
-            "internal", "tun", "bridge"];
+        let allowedTypes = ['device', 'veth', 'ovsbridge',
+            'internal', 'tun', 'bridge'];
         return allowedTypes.indexOf(this.Metadata.Type) >= 0;
     }
 }
@@ -80,9 +80,9 @@ export class Edge {
 }
 
 export class Graph {
-    Nodes: { [key: string]: GNode }
-    Edges: { [key: string]: Edge }
-    Groups: { [key: string]: Group }
+    Nodes: { [key: string]: GNode };
+    Edges: { [key: string]: Edge };
+    Groups: { [key: string]: Group };
     
     constructor() {
         this.Nodes = {};
@@ -91,7 +91,7 @@ export class Graph {
     };
 
     NewNode(ID: string, host?: string) {
-        var node = new GNode(ID);
+        let node = new GNode(ID);
         node.Graph = this;
         node.Host = host;
 
@@ -105,9 +105,9 @@ export class Graph {
     };
 
     GetNeighbors(node) {
-        var neighbors = [];
+        let neighbors = [];
 
-        for (var i in node.Edges) {
+        for (let i in node.Edges) {
             neighbors.push(node.Edges[i]);
         }
 
@@ -115,11 +115,11 @@ export class Graph {
     };
 
     GetChildren(node) {
-        var children = [];
+        let children = [];
 
-        for (var i in node.Edges) {
-            var e = node.Edges[i];
-            if (e.Parent == node)
+        for (let i in node.Edges) {
+            let e = node.Edges[i];
+            if (e.Parent === node)
                 children.push(e.Child);
         }
 
@@ -127,11 +127,11 @@ export class Graph {
     };
 
     GetParents(node) {
-        var parents = [];
+        let parents = [];
 
-        for (var i in node.Edges) {
-            var e = node.Edges[i];
-            if (e.Child == node)
+        for (let i in node.Edges) {
+            let e = node.Edges[i];
+            if (e.Child === node)
                 parents.push(e.Child);
         }
 
@@ -143,7 +143,7 @@ export class Graph {
     };
 
     NewEdge(ID, parent, child, host) {
-        var edge = new Edge(ID);
+        let edge = new Edge(ID);
         edge.Parent = parent;
         edge.Child = child;
         edge.Graph = this;
@@ -158,7 +158,7 @@ export class Graph {
     };
 
     DelNode(node) {
-        for (var i in node.Edges) {
+        for (let i in node.Edges) {
             this.DelEdge(this.Edges[i]);
         }
 
@@ -172,29 +172,29 @@ export class Graph {
     };
 
     InitFromSyncMessage(msg: Message) {
-        var g = msg.Obj;
+        let g = msg.Obj;
 
-        var i;
+        let i;
         for (i in g.Nodes || []) {
-            var n = g.Nodes[i];
+            let n = g.Nodes[i];
 
-            var node = this.NewNode(n.ID, n.Host);
-            if ("Metadata" in n)
+            let node = this.NewNode(n.ID, n.Host);
+            if ('Metadata' in n)
                 node.Metadata = n.Metadata;
         }
 
         for (i in g.Edges || []) {
-            var e = g.Edges[i];
+            let e = g.Edges[i];
 
-            var parent = this.GetNode(e.Parent);
-            var child = this.GetNode(e.Child);
+            let parent = this.GetNode(e.Parent);
+            let child = this.GetNode(e.Child);
 
             if (!parent || !child)
                 continue;
 
-            var edge = this.NewEdge(e.ID, parent, child, e.Host);
+            let edge = this.NewEdge(e.ID, parent, child, e.Host);
 
-            if ("Metadata" in e)
+            if ('Metadata' in e)
                 edge.Metadata = e.Metadata;
         }
     }

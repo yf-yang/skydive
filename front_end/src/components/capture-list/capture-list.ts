@@ -34,7 +34,7 @@ class Capture extends Vue implements ApiMixinContract {
   };
 
   remove(capture) {
-    var self = this,
+    let self = this,
       uuid = capture.UUID;
     this.deleting = true;
     this.$captureDelete(uuid)
@@ -44,7 +44,7 @@ class Capture extends Vue implements ApiMixinContract {
   }
 
   highlightCaptureNodes(capture, bool) {
-    var self = this;
+    let self = this;
     // Avoid highlighting the nodes while the capture
     // is being deleted
     if (this.deleting) {
@@ -54,9 +54,9 @@ class Capture extends Vue implements ApiMixinContract {
       .then(function (nodes) {
         nodes.forEach(function (n) {
           if (bool)
-            self.$store.commit("highlight", n.ID);
+            self.$store.commit('highlight', n.ID);
           else
-            self.$store.commit("unhighlight", n.ID);
+            self.$store.commit('unhighlight', n.ID);
         });
       });
   }
@@ -100,7 +100,7 @@ export class CaptureList extends Vue implements ApiMixinContract {
   }
 
   init() {
-    var self = this;
+    let self = this;
     this.$captureList()
       .then(function (data) {
         self.captures = data;
@@ -109,10 +109,10 @@ export class CaptureList extends Vue implements ApiMixinContract {
 
   onMsg(msg) {
     switch (msg.Type) {
-      case "CaptureDeleted":
+      case 'CaptureDeleted':
         Vue.delete(this.captures, msg.Obj.UUID);
         break;
-      case "CaptureAdded":
+      case 'CaptureAdded':
         Vue.set(this.captures, msg.Obj.UUID, msg.Obj);
         break;
     }

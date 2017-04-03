@@ -13,20 +13,20 @@ export class NodeSelector extends Vue {
   placeholder: string;
 
   @Prop()
-  attr: string = "Metadata.TID";
+  attr: string = 'Metadata.TID';
 
   select() {
-    var self = this;
-    $(".topology-d3").off('click');
-    $(".topology-d3").on('click', function (e) {
-      var value, node;
+    let self = this;
+    $('.topology-d3').off('click');
+    $('.topology-d3').on('click', function (e) {
+      let value, node;
       if ((<any>!e.target).__data__) {
         return;
       } else {
         node = value = (<any> e.target).__data__;
       }
 
-      self.attr.split(".").forEach(function (key) {
+      self.attr.split('.').forEach(function (key) {
         if (!value[key]) {
           return;
         } else {
@@ -37,7 +37,7 @@ export class NodeSelector extends Vue {
       self.$emit('input', value);
       self.$emit('selected', node);
       e.preventDefault();
-      $(".topology-d3").off('click');
+      $('.topology-d3').off('click');
     });
   }
 

@@ -13,7 +13,7 @@ export class CaptureForm extends Vue implements NotificationMixinContract, ApiMi
 
   $topologyQuery: (q: string) => JQueryPromise<any>;
   $captureList: () => JQueryPromise<any>;
-  $captureCreate: (q:string,n:string, d:string, b: string) => JQueryPromise<any>;
+  $captureCreate: (q: string, n: string, d: string, b: string) => JQueryPromise<any>;
   $captureDelete: (uuid: string) => JQueryPromise<any>;
 
   $notify: (options: NotifOptions) => void;
@@ -33,14 +33,14 @@ export class CaptureForm extends Vue implements NotificationMixinContract, ApiMi
 
   data() {
     return {
-      node1: "",
-      node2: "",
+      node1: '',
+      node2: '',
       queryNodes: [],
-      name: "",
-      desc: "",
-      bpf: "",
-      userQuery: "",
-      mode: "selection",
+      name: '',
+      desc: '',
+      bpf: '',
+      userQuery: '',
+      mode: 'selection',
       visible: false,
     };
   }
@@ -50,10 +50,10 @@ export class CaptureForm extends Vue implements NotificationMixinContract, ApiMi
   }
 
   get queryError() {
-    if (this.mode == "gremlin" && !this.userQuery) {
-      return "Gremlin query can't be empty";
-    } else if (this.mode == "selection" && !this.node1) {
-      return "At least one interface has to be selected";
+    if (this.mode === 'gremlin' && !this.userQuery) {
+      return 'Gremlin query can\'t be empty';
+    } else if (this.mode === 'selection' && !this.node1) {
+      return 'At least one interface has to be selected';
     } else {
       return;
     }
@@ -63,12 +63,12 @@ export class CaptureForm extends Vue implements NotificationMixinContract, ApiMi
     if (this.queryError) {
       return;
     }
-    if (this.mode == "gremlin") {
+    if (this.mode === 'gremlin') {
       return this.userQuery;
     } else {
-      var q = "G.V().Has('TID', '" + this.node1 + "')";
+      let q = 'G.V().Has(\'TID\', \'' + this.node1 + '\')';
       if (this.node2)
-        q += ".ShortestPathTo(Metadata('TID', '" + this.node2 + "'), Metadata('RelationType', 'layer2'))";
+        q += '.ShortestPathTo(Metadata(\'TID\', \'' + this.node2 + '\'), Metadata(\'RelationType\', \'layer2\'))';
       return q;
     }
   }
@@ -85,7 +85,7 @@ export class CaptureForm extends Vue implements NotificationMixinContract, ApiMi
 
   @Watch('query')
   watchQuery(newQuery) {
-    var self = this;
+    let self = this;
     if (!newQuery) {
       this.resetQueryNodes();
       return;
@@ -102,13 +102,13 @@ export class CaptureForm extends Vue implements NotificationMixinContract, ApiMi
   }
 
   reset() {
-    this.node1 = this.node2 = this.userQuery = "";
-    this.name = this.desc = this.bpf = "";
+    this.node1 = this.node2 = this.userQuery = '';
+    this.name = this.desc = this.bpf = '';
     this.visible = false;
   }
 
   start() {
-    var self = this;
+    let self = this;
     if (this.queryError) {
       this.$error({ message: this.queryError });
       return;
@@ -125,7 +125,7 @@ export class CaptureForm extends Vue implements NotificationMixinContract, ApiMi
   }
 
   highlightQueryNodes(bool: boolean) {
-    var self = this;
+    let self = this;
     this.queryNodes.forEach(function (n) {
       if (bool)
         self.$store.commit('highlight', n.ID);

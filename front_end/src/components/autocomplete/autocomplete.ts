@@ -1,5 +1,5 @@
 /* jshint multistr: true */
-import { debounce } from "../../utils";
+import { debounce } from '../../utils';
 import Vue from 'vue';
 import { Component, Prop } from 'vue-property-decorator';
 
@@ -25,17 +25,17 @@ export class Autocomplete extends Vue {
       open: false,
       current: 0,
       fetchedSuggestions: []
-    }
+    };
   }
 
   get openSuggestion() {
-    return this.value !== "" &&
+    return this.value !== '' &&
       this.matches.length !== 0 &&
       this.open === true;
   }
 
   get matches() {
-    var self = this;
+    let self = this;
     return this.fetchedSuggestions.filter(function (s) {
       return s.indexOf(self.value) >= 0;
     });
@@ -46,7 +46,7 @@ export class Autocomplete extends Vue {
   }
 
   fetchSuggestions() {
-    var self = this;
+    let self = this;
     this.suggestions()
       .then(function (data) {
         self.fetchedSuggestions = data;
@@ -55,7 +55,7 @@ export class Autocomplete extends Vue {
 
   complete() {
     if (this.openSuggestion === true) {
-      var value = this.matches[this.current] || this.value;
+      let value = this.matches[this.current] || this.value;
       this.open = false;
       this.$emit('input', value);
     }
@@ -79,7 +79,7 @@ export class Autocomplete extends Vue {
   }
 
   isActive(index) {
-    return index == this.current;
+    return index === this.current;
   }
 
   change(value) {
