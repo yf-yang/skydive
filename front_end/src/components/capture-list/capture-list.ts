@@ -1,168 +1,122 @@
 /* jshint multistr: true */
+import Vue from 'vue';
+import Component from 'vue-class-component';
+import { Watch, Prop } from 'vue-property-decorator';
+import { apiMixin, ApiMixinContract } from '../../api';
+import { websocket } from '../../app';
 
-var Capture = {
-
+@Component({
   mixins: [apiMixin],
+  template: require('./capture.html')
+})
+class Capture extends Vue implements ApiMixinContract {
 
-  props: {
+  $topologyQuery: (q: string) => JQueryPromise<any>;
+  $captureList: () => JQueryPromise<any>;
+  $captureCreate: (q: string, n: string, d: string) => JQueryPromise<any>;
+  $captureDelete: (uuid: string) => JQueryPromise<any>;
 
-    capture: {
-      type: Object,
-      required: true,
-    }
+  @Prop()
+  capture: { GremlinQuery: any };
 
-  },
+  showFlows: boolean;
+  deleting: boolean;
 
-  template: '\
-    <div class="capture-item">\
-      <div class="capture-title">\
-        <i class="capture-action capture-delete fa fa-trash"\
-           @click="remove(capture)">\
-        </i>\
-        <i class="capture-action fa"\
-           title="Monitor flows"\
-           v-if="canShowFlows"\
-           :class="{\'fa-expand\': !showFlows, \'fa-compress\': showFlows}"\
-           @click="showFlows = !showFlows"></i>\
-        {{capture.UUID}}\
-      </div>\
-      <dl class="dl-horizontal">\
-        <dt v-if="capture.Name">Name</dt>\
-        <dd v-if="capture.Name">{{capture.Name}}</dd>\
-        <dt>Query</dt>\
-        <dd class="query"\
-            @mouseover="highlightCaptureNodes(capture, true)"\
-            @mouseout="highlightCaptureNodes(capture, false)"\
-            @click="(canShowFlows ? showFlows = !showFlows : null)">\
-          {{capture.GremlinQuery}}\
-        </dd>\
-        <dt v-if="capture.Description">Desc</dt>\
-        <dd v-if="capture.Description">{{capture.Description}}</dd>\
-        <dt v-if="capture.BPFFilter">BPF</dt>\
-        <dd v-if="capture.BPFFilter">{{capture.BPFFilter}}</dd>\
-        <dt v-if="showFlows">Flows</dt>\
-        <dd v-if="showFlows">\
-          <flow-table :value="capture.GremlinQuery + \'.Flows().Dedup()\'"></flow-table>\
-        </dd>\
-      </dl>\
-    </div>\
-  ',
-
-  data: function() {
+  data() {
     return {
       showFlows: false,
       deleting: false,
     };
-  },
-
-  computed: {
-
-    // https://github.com/skydive-project/skydive/issues/202
-    canShowFlows: function() {
-      return this.capture.GremlinQuery.search('ShortestPathTo') === -1;
-    },
-
-  },
-
-  methods: {
-
-    remove: function(capture) {
-      var self = this,
-          uuid = capture.UUID;
-      this.deleting = true;
-      this.$captureDelete(uuid)
-        .always(function() {
-          self.deleting = false;
-        });
-    },
-
-    highlightCaptureNodes: function(capture, bool) {
-      var self = this;
-      // Avoid highlighting the nodes while the capture
-      // is being deleted
-      if (this.deleting) {
-        return;
-      }
-      this.$topologyQuery(capture.GremlinQuery)
-        .then(function(nodes) {
-          nodes.forEach(function(n) {
-            if (bool)
-              self.$store.commit("highlight", n.ID);
-            else
-              self.$store.commit("unhighlight", n.ID);
-          });
-        });
-    }
-
   }
 
-};
+  get canShowFlows() {
+    return this.capture.GremlinQuery.search('ShortestPathTo') === -1;
+  };
 
+  remove(capture) {
+    var self = this,
+      uuid = capture.UUID;
+    this.deleting = true;
+    this.$captureDelete(uuid)
+      .always(function () {
+        self.deleting = false;
+      });
+  }
 
-Vue.component('capture-list', {
+  highlightCaptureNodes(capture, bool) {
+    var self = this;
+    // Avoid highlighting the nodes while the capture
+    // is being deleted
+    if (this.deleting) {
+      return;
+    }
+    this.$topologyQuery(capture.GremlinQuery)
+      .then(function (nodes) {
+        nodes.forEach(function (n) {
+          if (bool)
+            self.$store.commit("highlight", n.ID);
+          else
+            self.$store.commit("unhighlight", n.ID);
+        });
+      });
+  }
+}
 
+@Component({
+  template: require('./capture-list.html'),
   mixins: [apiMixin],
+  components: { 'capture': Capture }
+})
+export class CaptureList extends Vue implements ApiMixinContract {
 
-  components: {
-    'capture': Capture,
-  },
+  $topologyQuery: (q: string) => JQueryPromise<any>;
+  $captureList: () => JQueryPromise<any>;
+  $captureCreate: (q: string, n: string, d: string) => JQueryPromise<any>;
+  $captureDelete: (uuid: string) => JQueryPromise<any>;
 
-  template: '\
-    <div class="sub-left-panel" v-if="count > 0">\
-      <ul class="capture-list">\
-        <li class="capture-item"\
-            v-for="capture in captures"\
-            :id="capture.UUID">\
-          <capture :capture="capture"></capture>\
-        </li>\
-      </ul>\
-    </div>\
-  ',
+  captures: {};
+  deleting: {}[];
+  timer: {};
 
-  data: function() {
+  data() {
     return {
       captures: {},
       deleting: [],
-      timer: null,
+      timer: null
     };
-  },
-
-  created: function() {
-    websocket.addMsgHandler('OnDemand', this.onMsg.bind(this));
-    websocket.addConnectHandler(this.init.bind(this));
-  },
-
-  beforeDestroy: function() {
-    websocket.delConnectHandler(this.init.bind(this));
-  },
-
-  computed: {
-    count: function() {
-      return Object.keys(this.captures).length;
-    }
-  },
-
-  methods: {
-
-    init: function() {
-      var self = this;
-      this.$captureList()
-        .then(function(data) {
-          self.captures = data;
-        });
-    },
-
-    onMsg: function(msg) {
-      switch(msg.Type) {
-        case "CaptureDeleted":
-          Vue.delete(this.captures, msg.Obj.UUID);
-          break;
-        case "CaptureAdded":
-          Vue.set(this.captures, msg.Obj.UUID, msg.Obj);
-          break;
-      }
-    }
-
   }
 
-});
+  created() {
+    websocket.addMsgHandler('OnDemand', this.onMsg.bind(this));
+    websocket.addConnectHandler(this.init.bind(this));
+  }
+
+  beforeDestroy() {
+    websocket.delConnectHandler(this.init.bind(this));
+  }
+
+  get count() {
+    return Object.keys(this.captures).length;
+  }
+
+  init() {
+    var self = this;
+    this.$captureList()
+      .then(function (data) {
+        self.captures = data;
+      });
+  }
+
+  onMsg(msg) {
+    switch (msg.Type) {
+      case "CaptureDeleted":
+        Vue.delete(this.captures, msg.Obj.UUID);
+        break;
+      case "CaptureAdded":
+        Vue.set(this.captures, msg.Obj.UUID, msg.Obj);
+        break;
+    }
+  }
+}
+
+export function register() { Vue.component('capture-list', CaptureList); }

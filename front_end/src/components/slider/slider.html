@@ -1,0 +1,6 @@
+<div>
+    <div class="pull-left">
+        <input type="range" :min="min" v-model="val" :max="max" :step="step" number>
+    </div>
+    <span v-if="info">{{ info }}</span>
+</div>

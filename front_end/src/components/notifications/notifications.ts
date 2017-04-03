@@ -1,76 +1,59 @@
+import Vue from 'vue';
+import { Component, Watch, Prop } from 'vue-property-decorator';
 
-var Notification = {
+@Component({ template: require('./notification.html') })
+class Notification extends Vue {
+  @Prop()
+  notification: { title: string, timeout: boolean, delay: number, type: string };
+  timeout: number;
 
-  props: {
-
-    notification: {
-      type: Object,
-      required: true
-    },
-
-  },
-
-  template: '\
-    <transition name="slide" mode="out-in">\
-      <div class="alert" :class="css" role="alert">\
-          <button type="button" aria-hidden="true" class="close" @click="close">×</button>\
-          <span data-notify="title">{{notification.title}}</span>\
-          <span data-notify="message">{{notification.message}}</span>\
-      </div>\
-    </transition>\
-  ',
-
-  mounted: function() {
+  mounted() {
     var self = this;
     if (self.notification.timeout === false)
       return;
-    this.timeout = setTimeout(function() {
+    this.timeout = window.setTimeout(function () {
       self.$store.commit('removeNotification', self.notification);
     }, self.notification.delay || 2000);
-  },
-
-  computed: {
-
-    css: function() {
-      return "alert-" + this.notification.type;
-    }
-
-  },
-
-  methods: {
-
-    close: function() {
-      if (this.timeout) {
-        clearInterval(this.timeout);
-      }
-      this.$store.commit('removeNotification', this.notification);
-    }
-
   }
 
+  get css() {
+    return "alert-" + this.notification.type;
+  }
+
+  close() {
+    if (this.timeout) {
+      clearInterval(this.timeout);
+    }
+    this.$store.commit('removeNotification', this.notification);
+  }
 };
 
-Vue.component('notifications', {
-
+@Component({
   components: {
     notification: Notification,
   },
+  template: require("./notifications.html")
+})
+class Notifications extends Vue {
 
-  template: '\
-    <div class="col-xs-11 col-sm-4" style="position: fixed; z-index: 1031; top: 20px; right: 20px;">\
-      <notification v-for="n in notifications" :notification="n"></notification>\
-    </div>\
-  ',
+  get notifications() {
+    return this.$store.getters.notifications
+  }
+}
 
-  computed: Vuex.mapState(['notifications']),
+export interface NotifOptions {
+  message: string;
+}
 
-});
+export interface NotificationMixinContract extends Vue {
+  $notify: (options: NotifOptions) => void;
+  $error:  (options: NotifOptions) => void;
+  $success:  (options: NotifOptions) => void;
+}
 
-var notificationMixin = {
-
+export const notificationMixin = {
   methods: {
-
-    $notify: function(options) {
+    $notify: function(this: NotificationMixinContract, options) {
       this.$store.commit('addNotification', Object.assign({
         type: 'info',
         title: '',
@@ -79,7 +62,7 @@ var notificationMixin = {
       }, options));
     },
 
-    $error: function(options) {
+    $error: function(this: NotificationMixinContract, options) {
       this.$store.commit('addNotification', Object.assign({
         type: 'danger',
         title: '',
@@ -88,15 +71,13 @@ var notificationMixin = {
       }, options));
     },
 
-    $success: function(options) {
+    $success: function (this: NotificationMixinContract, options) {
       this.$store.commit('addNotification', Object.assign({
         type: 'success',
         title: '',
         timeout: true,
         delay: 2000,
       }, options));
-    },
-
+    }
   }
-
-};
+}

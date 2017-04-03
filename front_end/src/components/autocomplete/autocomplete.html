@@ -1,0 +1,12 @@
+<div :class="{\'open\': openSuggestion}">
+    <input class="form-control input-sm" type="text" :placeholder="placeholder" 
+           :value="value" @keydown.enter="complete" @keydown.tab="complete"
+        @keydown.down="down" @keydown.up="up" @input="change($event.target.value)" />
+    <ul class="dropdown-menu">
+        <li v-for="(suggestion, index) in matches" 
+            :class="{\'active\': isActive(index)}"
+            @click.stop="click(index)">
+            <a href="#">{{ suggestion }}</a>
+        </li>
+    </ul>
+</div>

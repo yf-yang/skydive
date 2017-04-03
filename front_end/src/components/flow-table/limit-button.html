@@ -1,0 +1,9 @@
+<button-dropdown :text="buttonText" b-class="btn-xs">
+    <li v-for="val in values">
+        <a href="#" @click="select(val)">
+            <small><i class="fa fa-check text-success pull-right"
+             aria-hidden="true" v-show="val == value"></i>
+             {{valueText(val)}}</small>
+        </a>
+    </li>
+</button-dropdown>

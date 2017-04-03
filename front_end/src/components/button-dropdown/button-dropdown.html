@@ -1,0 +1,10 @@
+<div class="btn-group" :id="id" :class="{'open': open, 'dropup': dropup}">
+    <button class="btn btn-default dropdown-toggle" :class="bClass" @click="toggle" aria-haspopup="true" :aria-expanded="open">
+          <slot name="button-text">
+            {{text}}
+          </slot>
+      </button>
+    <ul class="dropdown-menu" v-if="open" @click="itemSelected">
+        <slot></slot>
+    </ul>
+</div>

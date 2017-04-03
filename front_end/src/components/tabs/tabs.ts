@@ -1,83 +1,66 @@
 /* jshint multistr: true */
+import Vue from 'vue';
+import { Component, Prop, Watch } from 'vue-property-decorator';
 
-Vue.component('tab-pane', {
+@Component({
+  template: require('./tab-pane.html')
+})
+export class TabPane extends Vue {
+  @Prop()
+  title: string;
 
-  props: ['title'],
+  get index() {
+    return (this.$parent as Tabs).panes.indexOf(this);
+  }
 
-  template: '\
-    <div class="tab-pane"\
-         v-bind:class="{active: selected}"\
-         v-if="selected">\
-      <div class="left-cont">\
-        <div class="left-panel">\
-          <slot></slot>\
-        </div>\
-      </div>\
-    </div>\
-  ',
+  get selected() {
+    return this.index === (this.$parent as Tabs).selected;
+  }
 
-  computed: {
+  created() {
+    (this.$parent as Tabs).addPane(this);
+  }
 
-    index: function() {
-      return this.$parent.panes.indexOf(this);
-    },
+  beforeDestroy() {
+    (this.$parent as Tabs).removePane(this);
+  }
 
-    selected: function() {
-      return this.index === this.$parent.selected;
-    }
+};
 
-  },
+@Component({
+  template: require('./tabs.html')
+})
+class Tabs extends Vue {
 
-  created: function() {
-    this.$parent.addPane(this);
-  },
+  panes: any[];
+  selected: number;
 
-  beforeDestroy: function() {
-    this.$parent.removePane(this);
-  },
-
-});
-
-Vue.component('tabs', {
-
-  template: '\
-    <div class="flow-ops-panel">\
-      <ul class="nav nav-pills">\
-        <li v-for="(pane, index) in panes" v-bind:class="{active: pane.selected}" @click="select(index)" style="cursor: pointer">\
-          <a>{{pane.title}}</a>\
-        </li>\
-      </ul>\
-      <div class="tab-content clearfix">\
-        <slot></slot>\
-      </div>\
-    </div>\
-  ',
-
-  data: function() {
+  data() {
     return {
       panes: [],
       selected: 0
     };
-  },
-
-  methods: {
-
-    select: function(index) {
-      this.selected = index;
-    },
-
-    addPane: function(pane) {
-      this.panes.push(pane);
-    },
-
-    removePane: function(pane) {
-      var idx = this.panes.indexOf(pane);
-      this.panes.splice(idx, 1);
-      if (idx <= this.selected) {
-        this.selected -= 1;
-      }
-    },
-
   }
 
-});
+  select(index) {
+    this.selected = index;
+  }
+
+  addPane(pane) {
+    this.panes.push(pane);
+  }
+
+  removePane(pane) {
+    var idx = this.panes.indexOf(pane);
+    this.panes.splice(idx, 1);
+    if (idx <= this.selected) {
+      this.selected -= 1;
+    }
+  }
+
+}
+
+export function register() {
+  Vue.component('tab-pane', TabPane);
+  Vue.component('tabs', Tabs);
+}

@@ -1,0 +1,7 @@
+<transition name="slide" mode="out-in">
+    <div class="alert" :class="css" role="alert">
+        <button type="button" aria-hidden="true" class="close" @click="close">×</button>
+        <span data-notify="title">{{notification.title}}</span>
+        <span data-notify="message">{{notification.message}}</span>
+    </div>
+</transition>

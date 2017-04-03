@@ -1,60 +1,38 @@
 /* jshint multistr: true */
+import Vue from 'vue';
+import { Component, Prop, Watch } from 'vue-property-decorator';
 
-Vue.component('slider', {
+@Component({
+  template: require('./slider.html')
+})
+export class Slider extends Vue {
+  @Prop({ default: 0 })
+  value: number;
 
-  props: {
+  @Prop()
+  min: number;
 
-    value: {
-      type: Number,
-      default: 0,
-    },
+  @Prop()
+  max: number;
 
-    min: {
-      type: Number,
-      required: true,
-    },
+  @Prop({ default: 1 })
+  step: number;
 
-    max: {
-      type: Number,
-      required: true,
-    },
+  @Prop()
+  info: string;
 
-    step: {
-      type: Number,
-      default: 1,
-    },
+  val: string;
 
-    info: {
-      type: String,
-    },
-
-  },
-
-  template: '\
-    <div>\
-      <div class="pull-left">\
-        <input type="range" :min="min" v-model="val" :max="max" :step="step" number>\
-      </div>\
-      <span v-if="info">{{ info }}</span>\
-    </div>\
-  ',
-
-  data: function() {
+  data() {
     return {
-      val: this.value
+      val: '' + this.value
     };
-  },
+  }
 
-  watch: {
+  @Watch('val')
+  watchVal() {
+    this.$emit('input', parseInt(this.val));
+  }
+}
 
-    val: function() {
-      this.$emit('input', parseInt(this.val));
-    }
-
-  },
-
-  methods: {
-
-  },
-
-});
+export function register() { Vue.component('slider', Slider); }

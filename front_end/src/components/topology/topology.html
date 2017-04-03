@@ -1,0 +1,53 @@
+<div class="topology">
+    <div class="col-sm-7 fill content">
+        <div class="topology-d3"></div>
+        <slider v-if="history" class="slider" :min="timeRange[0]" :max="timeRange[1]" v-model="time" :info="topologyTimeHuman"></slider>
+        <div class="topology-controls">
+            <button type="button" class="btn btn-primary" title="Zoom In" @click="zoomIn">
+            <span class="glyphicon glyphicon-zoom-in" aria-hidden="true"></span>
+          </button>
+            <button type="button" class="btn btn-primary" title="Zoom Out" @click="zoomOut">
+            <span class="glyphicon glyphicon-zoom-out" aria-hidden="true"></span>
+          </button>
+            <button type="button" class="btn btn-primary" title="Reset" @click="zoomReset">Reset</button>
+            <button type="button" class="btn btn-primary" @click="collapseAll">{{collapsed ? "Expand" : "Collapse"}}</button>
+        </div>
+    </div>
+    <div class="col-sm-5 fill info">
+        <tabs v-if="isAnalyzer">
+            <tab-pane title="Captures">
+                <capture-list></capture-list>
+                <capture-form v-if="time === 0"></capture-form>
+            </tab-pane>
+            <tab-pane title="Generator" v-if="time === 0">
+                <inject-form></inject-form>
+            </tab-pane>
+            <tab-pane title="Flows">
+                <flow-table-control></flow-table-control>
+            </tab-pane>
+        </tabs>
+        <transition name="slide" mode="out-in">
+            <div class="left-panel" v-if="currentNode">
+                <span v-if="time" class="label center-block node-time">
+              Interface state at {{timeHuman}}
+            </span>
+                <h1>Metadatas<span class="pull-right">(ID: {{currentNode.ID}})</span></h1>
+                <div class="sub-left-panel">
+                    <object-detail :object="currentNodeMetadata"></object-detail>
+                </div>
+                <div v-show="Object.keys(currentNodeStats).length">
+                    <h1>Interface metrics</h1>
+                    <statistics-table :object="currentNodeStats"></statistics-table>
+                </div>
+                <div v-show="Object.keys(currentNodeLastStats).length && time === 0">
+                    <h1>Last metrics</h1>
+                    <statistics-table :object="currentNodeLastStats"></statistics-table>
+                </div>
+                <div v-if="isAnalyzer && currentNodeFlowsQuery">
+                    <h1>Flows</h1>
+                    <flow-table :value="currentNodeFlowsQuery"></flow-table>
+                </div>
+            </div>
+        </transition>
+    </div>
+</div>

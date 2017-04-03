@@ -1,17 +1,29 @@
-function WSHandler() {
-  this.host = location.host;
-  this.conn = null;
-  this.connected = null;
-  this.disconnected = null;
-  this.msgHandlers = {};
-  this.discHandlers = [];
-  this.connHandlers = [];
-  this.errorHandlers = [];
-}
+import * as $ from 'jquery';
+import { store } from './app';
 
-WSHandler.prototype = {
+export class WSHandler {
+  host: string;
+  conn: WebSocket;
+  connected: JQueryDeferred<{}>;
+  connecting: boolean;
+  disconnected: JQueryDeferred<{}>;
+  msgHandlers: { [namespace: string]: ((msg: string) => void)[]; }
+  discHandlers: (() => void)[];
+  connHandlers: (() => void)[];
+  errorHandlers: (() => void)[];
 
-  connect: function() {
+  constructor () {
+    this.host = location.host;
+    this.conn = null;
+    this.connected = null;
+    this.disconnected = null;
+    this.msgHandlers = {};
+    this.discHandlers = [];
+    this.connHandlers = [];
+    this.errorHandlers = [];
+  }
+
+  connect() {
     var self = this;
 
     if (this.conn && this.conn.readyState == WebSocket.OPEN) {
@@ -19,31 +31,31 @@ WSHandler.prototype = {
     }
 
     this._connect();
-  },
+  }
 
-  _connect: function() {
+  _connect() { 
     var self = this;
 
     this.connected = $.Deferred();
-    this.connected.then(function() {
-      self.connHandlers.forEach(function(callback) {
+    this.connected.then(function () {
+      self.connHandlers.forEach(function (callback) {
         callback();
       });
     });
     this.disconnected = $.Deferred();
-    this.disconnected.then(function() {
-      self.discHandlers.forEach(function(callback) {
+    this.disconnected.then(function () {
+      self.discHandlers.forEach(function (callback) {
         callback();
       });
     });
     this.connecting = true;
 
     this.conn = new WebSocket("ws://" + this.host + "/ws");
-    this.conn.onopen = function() {
+    this.conn.onopen = function () {
       self.connecting = false;
       self.connected.resolve(true);
     };
-    this.conn.onclose = function() {
+    this.conn.onclose = function () {
       // connection closed after a succesful connection
       if (self.connecting === false) {
         self.disconnected.resolve(true);
@@ -53,10 +65,10 @@ WSHandler.prototype = {
         self.connected.reject(false);
       }
     };
-    this.conn.onmessage = function(r) {
+    this.conn.onmessage = function (r) {
       var msg = JSON.parse(r.data);
       if (self.msgHandlers[msg.Namespace]) {
-        self.msgHandlers[msg.Namespace].forEach(function(callback) {
+        self.msgHandlers[msg.Namespace].forEach(function (callback) {
           callback(msg);
         });
       }
@@ -66,44 +78,44 @@ WSHandler.prototype = {
         callback();
       });
     };
-  },
+  }
 
-  addMsgHandler: function(namespace, callback) {
-    if (! this.msgHandlers[namespace]) {
+  addMsgHandler(namespace, callback) {
+    if (!this.msgHandlers[namespace]) {
       this.msgHandlers[namespace] = [];
     }
     this.msgHandlers[namespace].push(callback);
-  },
+  }
 
-  addConnectHandler: function(callback) {
+  addConnectHandler(callback) {
     this.connHandlers.push(callback);
     if (this.connected !== null) {
-      this.connected.then(function() {
+      this.connected.then(function () {
         callback();
       });
     }
-  },
+  }
 
-  delConnectHandler: function(callback) {
+  delConnectHandler(callback) {
     this.connHandlers.splice(
       this.connHandlers.indexOf(callback), 1);
-  },
+  }
 
-  addDisconnectHandler: function(callback) {
+  addDisconnectHandler(callback) {
     this.discHandlers.push(callback);
     if (this.disconnected !== null) {
-      this.disconnected.then(function() {
+      this.disconnected.then(function () {
         callback();
       });
     }
-  },
+  }
 
-  addErrorHandler: function(callback) {
+  addErrorHandler(callback) {
     this.errorHandlers.push(callback);
-  },
+  }
 
-  send: function(msg) {
+  send(msg) {
     this.conn.send(JSON.stringify(msg));
   }
 
-};
+}
