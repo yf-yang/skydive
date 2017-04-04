@@ -19,7 +19,7 @@ export class NodeSelector extends Vue {
     let self = this;
     $('.topology-d3').off('click');
     $('.topology-d3').on('click', function (e) {
-      let value, node;
+      let value: any, node: any;
       if ((<any>!e.target).__data__) {
         return;
       } else {

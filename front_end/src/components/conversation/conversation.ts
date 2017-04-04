@@ -3,6 +3,18 @@ import * as d3 from "d3"
 import Vue from 'vue';
 import { Component, Watch } from 'vue-property-decorator';
 
+
+interface Node {
+  index: number;
+  count: number;
+};
+
+interface Link {
+  source: number;
+  target: number;
+  value: number;
+}
+
 @Component({
   template: require("./conversation.html")
 })
@@ -11,30 +23,30 @@ export class ConversationComponent extends Vue {
   layout: ConversationLayout;
 
   name = 'Conversation';
-  layers: {label:string, value: string} [];
-  orders: {label:string, value: string} []
+  layers: { label: string, value: string }[];
+  orders: { label: string, value: string }[]
   layer: string;
   order: string;
-  node: {};
+  node: Node;
 
   data() {
     return {
       layers: [
-        {label: "Ethernet", value: "ethernet"},
-        {label: "IPv4", value: "ipv4"},
-        {label: "IPv6", value: "ipv6"},
-        {label: "TCP", value: "tcp"},
-        {label: "UDP", value: "udp"},
-        {label: "SCTP", value: "sctp"},
+        { label: "Ethernet", value: "ethernet" },
+        { label: "IPv4", value: "ipv4" },
+        { label: "IPv6", value: "ipv6" },
+        { label: "TCP", value: "tcp" },
+        { label: "UDP", value: "udp" },
+        { label: "SCTP", value: "sctp" },
       ],
       layer: "ethernet",
       orders: [
-        {label: "by Name", value: "name"},
-        {label: "by Frequency", value: "count"},
-        {label: "by Application", value: "group"},
+        { label: "by Name", value: "name" },
+        { label: "by Frequency", value: "count" },
+        { label: "by Application", value: "group" },
       ],
       order: "name",
-      node: null,
+      node: null as Node,
     };
   }
 
@@ -67,9 +79,9 @@ class ConversationLayout {
   svg: d3.Selection<any>;
   width: number;
   height: number;
-  orders: { name?: number[], count?: number[], group?: number[] };
+  orders: { name?: number[]; count?: number[]; group?: number[];[key: string]: number[]; };
 
-  constructor(vm, selector) {
+  constructor(vm: ConversationComponent, selector: string) {
     this.vm = vm;
     this.width = 600;
     this.height = 600;
@@ -86,54 +98,54 @@ class ConversationLayout {
     this.orders = {};
   }
 
-  Order(order) {
+  Order(order: string) {
     if (!(order in this.orders))
       return;
 
-    var x = d3.scale.ordinal().rangeBands([0, this.width]);
+    var x = d3.scale.ordinal<number, number>().rangeBands([0, this.width]);
 
     x.domain(this.orders[order]);
 
     var t = this.svg.transition().duration(2500);
 
     t.selectAll(".row")
-      .delay(function (d, i) { return x(i + '') * 4; })
+      .delay(function (d, i) { return x(i) * 4; })
       .attr("transform", function (d, i) {
-        return "translate(0," + x(i + '') + ")";
+        return "translate(0," + x(i) + ")";
       })
       .selectAll(".cell")
       .delay(function (d) { return x(d.x) * 4; })
       .attr("x", function (d) { return x(d.x); });
 
     t.selectAll(".column")
-      .delay(function (d, i) { return x(i + '') * 4; })
+      .delay(function (d, i) { return x(i) * 4; })
       .attr("transform", function (d, i) {
-        return "translate(" + x(i + '') + ")rotate(-90)";
+        return "translate(" + x(i) + ")rotate(-90)";
       });
   };
 
-  NodeDetails(node) {
+  NodeDetails(node: Node) {
     this.vm.node = node;
   }
 
-  ShowConversation(layer) {
+  ShowConversation(layer: string) {
     this.svg.selectAll("*").remove();
 
     var _this = this;
     d3.json("/api/flow/conversation/" + layer, function (data) {
-      var matrix = [];
-      var nodes = data.nodes;
-      var n = nodes.length;
+      let matrix = [] as Cell[][];
+      let nodes = data.nodes;
+      let n = nodes.length;
 
       // Compute index per node.
-      nodes.forEach(function (node, i) {
+      nodes.forEach(function (node: Node, i: number) {
         node.index = i;
         node.count = 0;
         matrix[i] = d3.range(n).map(function (j) { return { x: j, y: i, z: 0 }; });
       });
 
       // Convert links to matrix; count character occurrences.
-      data.links.forEach(function (link) {
+      data.links.forEach(function (link: Link) {
         matrix[link.source][link.target].z += link.value;
         matrix[link.target][link.source].z += link.value;
         nodes[link.source].count += link.value;
@@ -153,12 +165,11 @@ class ConversationLayout {
         })
       };
 
-      var x = d3.scale.ordinal().rangeBands([0, _this.width]);
+      var x = d3.scale.ordinal<number, number>().rangeBands([0, _this.width]);
       var z = d3.scale.linear().domain([0, 4]).clamp(true);
       var c = d3.scale.category10().domain(d3.range(10).map(function (x) { return x + '' }));
-
       // The default sort order.
-      x.domain(_this.orders.name.map(function (x) { return x + '' }));
+      x.domain(_this.orders.name);
 
       _this.svg.append("rect")
         .attr("class", "background")
@@ -170,26 +181,24 @@ class ConversationLayout {
         .enter().append("g")
         .attr("class", "row")
         .attr("transform", function (d, i) {
-          return "translate(0," + x('' + i) + ")";
+          return "translate(0," + x(i) + ")";
+        });
+      var cell = row.selectAll(".cell")
+        .data<Cell>(function (d: Cell[]) { return d; })
+        .enter().append("rect")
+        .attr("class", "cell")
+        .attr("x", function (d) { return x(d.x); })
+        .attr("width", x.rangeBand())
+        .attr("height", x.rangeBand())
+        .style("fill-opacity", function (d) { return z(d.z); })
+        .style("fill", function (d) { return "rgb(31, 119, 180)"; })
+        .on("mouseover", function (p) {
+          d3.selectAll(".row text").classed("active", function (d, i) { return i == p.y; });
+          d3.selectAll(".column text").classed("active", function (d, i) { return i == p.x; });
+          //_this.NodeDetails(nodes[p.x]);
         })
-        .each(function (row) {
-          var cell = d3.select(this).selectAll(".cell")
-            .data<Cell>(row.filter(function (d) { return d.z; }))
-            .enter().append("rect")
-            .attr("class", "cell")
-            .attr("x", function (d) { return x('' + d.x); })
-            .attr("width", x.rangeBand())
-            .attr("height", x.rangeBand())
-            .style("fill-opacity", function (d) { return z(d.z); })
-            .style("fill", function (d) { return "rgb(31, 119, 180)"; })
-            .on("mouseover", function (p) {
-              d3.selectAll(".row text").classed("active", function (d, i) { return i == p.y; });
-              d3.selectAll(".column text").classed("active", function (d, i) { return i == p.x; });
-              //_this.NodeDetails(nodes[p.x]);
-            })
-            .on("mouseout", function (p) {
-              d3.selectAll("text").classed("active", false);
-            });
+        .on("mouseout", function (p) {
+          d3.selectAll("text").classed("active", false);
         });
 
       row.append("line")
@@ -207,7 +216,7 @@ class ConversationLayout {
         .enter().append("g")
         .attr("class", "column")
         .attr("transform", function (d, i) {
-          return "translate(" + x('' + i) + ")rotate(-90)";
+          return "translate(" + x(i) + ")rotate(-90)";
         });
 
       column.append("line")

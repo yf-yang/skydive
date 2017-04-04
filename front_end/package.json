@@ -21,6 +21,7 @@
   "dependencies": {
     "@types/d3": "^3.5.38",
     "@types/jquery": "^2.0.41",
+    "@types/jqueryui": "^1.11.32",
     "@types/lscache": "^1.0.29",
     "bootstrap": "~3.3.7",
     "bootstrap-slider": "^9.7.2",

@@ -6,6 +6,8 @@ import { NotificationMixinContract, notificationMixin, NotifOptions } from '../n
 import * as d3 from 'd3';
 import { debounce } from '../../utils';
 import { TopologyLayout } from './layout';
+import * as $ from 'jquery';
+
 
 @Component({
   template: require('./topology.html'),
@@ -44,13 +46,14 @@ export class TopologyComponent extends Vue implements NotificationMixinContract 
     $(this.$el).find('.content').resizable({
       handles: 'e',
       minWidth: 300,
-      resize: function (event, ui) {
+      resize: function (this: JQuery, event: Event, ui: JQueryUI.ResizableUIParams) {
         let x = ui.element.outerWidth();
         let y = ui.element.outerHeight();
         let ele = ui.element;
         let factor = $(this).parent().width() - x;
         let f2 = $(this).parent().width() * 0.02999;
-        $.each(ele.siblings(), function (idx, item) {
+        // TypeScript is a little lost. We get a pseudo array, so idx is a number.
+        $.each<JQuery>(ele.siblings() as any, function (idx: number, item) {
           ele.siblings().eq(idx).css('height', y + 'px');
           ele.siblings().eq(idx).width((factor - f2) + 'px');
         });
@@ -342,7 +345,7 @@ TopologyLayout.prototype.LinkDistance = function(d, i) {
   }
 
   @Watch('topologyTime')
-  watchTopologyTime(at) {
+  watchTopologyTime(at: number) {
     if (this.time === 0) {
       this.syncTopo();
     }
@@ -367,7 +370,7 @@ TopologyLayout.prototype.LinkDistance = function(d, i) {
     return this.time === 0;
   }
 
-  get topologyTime() {
+  get topologyTime(): number {
     let time = new Date();
     time.setMinutes(time.getMinutes() + this.time);
     time.setSeconds(0);
@@ -375,32 +378,32 @@ TopologyLayout.prototype.LinkDistance = function(d, i) {
     return time.getTime();
   }
 
-  get timeHuman() {
+  get timeHuman(): string {
     return this.$store.getters.timeHuman;
   }
 
-  get topologyTimeHuman() {
+  get topologyTimeHuman(): string {
     if (this.live) {
       return 'live';
     }
     return -this.time + ' min. ago (' + this.timeHuman + ')';
   }
 
-  get currentNodeFlowsQuery() {
+  get currentNodeFlowsQuery(): string {
     if (this.currentNode && this.currentNode.IsCaptureAllowed())
       return 'G.V(\'' + this.currentNode.ID + '\').Flows().Sort().Dedup()';
     return '';
   }
 
-  get currentNodeMetadata() {
+  get currentNodeMetadata(): { [key: string]: string; } {
     return this.extractMetadata(this.currentNode.Metadata, null, ['LastMetric', 'Statistics', '__']);
   }
 
-  get currentNodeStats() {
+  get currentNodeStats(): { [key: string]: string; } {
     return this.extractMetadata(this.currentNode.Metadata, 'Statistics');
   }
 
-  get currentNodeLastStats() {
+  get currentNodeLastStats(): { [key: string]: string; } {
     let s = this.extractMetadata(this.currentNode.Metadata, 'LastMetric');
     ['LastMetric/Start', 'LastMetric/Last'].forEach(function (k) {
       if (s[k]) {
@@ -410,7 +413,7 @@ TopologyLayout.prototype.LinkDistance = function(d, i) {
     return s;
   }
 
-  rescale(factor) {
+  rescale(factor: number) {
     let width = this.layout.width,
       height = this.layout.height,
       translate = this.layout.zoom.translate(),
@@ -469,7 +472,7 @@ TopologyLayout.prototype.LinkDistance = function(d, i) {
   }
 
   extractMetadata(metadata: { [key: string]: string }, namespace: string, exclude?: string[]): { [key: string]: string } {
-    return Object.getOwnPropertyNames(metadata).reduce(function (mdata, key) {
+    return Object.getOwnPropertyNames(metadata).reduce<{[key: string]: string; }>(function (mdata, key) {
       let use = true;
       if (namespace && key.search(namespace) === -1) {
         use = false;

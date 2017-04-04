@@ -14,14 +14,14 @@ interface Field {
 export class StatisticsTable extends Vue {
 
   @Prop()
-  object: {};
+  object: {[key: string]: number; };
 
   fields: Field[];
   defaultFields: string[];
 
   data() {
     return {
-      fields: [],
+      fields: [] as Field [],
       defaultFields: ['RxBytes', 'RxPackets', 'TxBytes', 'TxPackets'],
     };
   }
@@ -72,11 +72,11 @@ export class StatisticsTable extends Vue {
     }, true);
   }
 
-  isTime(field) {
+  isTime(field: Field) {
     return ['Start', 'Last'].indexOf(field.label) !== -1;
   }
 
-  toggleField(field) {
+  toggleField(field: Field) {
     field.show = !field.show;
     // mark the field if is has been changed by the user
     field.showChanged = true;

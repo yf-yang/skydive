@@ -50,12 +50,12 @@ class InjectForm extends Vue implements NotificationMixinContract {
     if (!this.node1 || !this.node2) {
       return 'Source and destination interfaces must be selected';
     } else {
-      return;
+      return null;
     }
   }
 
   @Watch('node1')
-  watchNode1(newVal, oldVal) {
+  watchNode1(newVal: string, oldVal: string) {
     if (oldVal) {
       this.highlightNode(oldVal, false);
     }
@@ -63,14 +63,14 @@ class InjectForm extends Vue implements NotificationMixinContract {
   }
 
   @Watch('node2')
-  watchNode2(newVal, oldVal) {
+  watchNode2(newVal: string, oldVal: string) {
     if (oldVal) {
       this.highlightNode(oldVal, false);
     }
     this.highlightNode(newVal, true);
   }
 
-  highlightNode(id, bool) {
+  highlightNode(id: string, bool: boolean) {
     if (bool)
       this.$store.commit('highlight', id);
     else

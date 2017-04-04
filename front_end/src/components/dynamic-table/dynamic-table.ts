@@ -28,7 +28,7 @@ class DynamicTable extends Vue {
       });
     }
 
-    sort(name) {
+    sort(name: string[]) {
       if (name === this.sortBy) {
         this.$emit('order', this.sortOrder * -1);
       } else {
@@ -36,11 +36,11 @@ class DynamicTable extends Vue {
       }
     }
 
-    toggleField(field, index) {
+    toggleField(field: string, index: number) {
       this.$emit('toggleField', field, index);
     }
 
-    fieldValue(object, key) {
+    fieldValue(object: any, key: string[]) {
       return object[key[0]];
     }
 }

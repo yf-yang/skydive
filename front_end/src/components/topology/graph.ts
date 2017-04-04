@@ -11,7 +11,7 @@ export class Group {
     Type: string;
     Nodes: { [key: string]: GNode };
     Hulls: [number, number] [];
-    constructor(ID, type) {
+    constructor(ID: string, type: string) {
         this.ID = ID;
         this.Type = type;
         this.Nodes = {};
@@ -71,7 +71,7 @@ export class Edge {
     Visible: boolean;
     Graph: Graph;
 
-    constructor(ID) {
+    constructor(ID: string) {
         this.ID = ID;
         this.Host = '';
         this.Metadata = {};
@@ -100,11 +100,11 @@ export class Graph {
         return node;
     };
 
-    GetNode(ID) {
+    GetNode(ID: string) {
         return this.Nodes[ID];
     };
 
-    GetNeighbors(node) {
+    GetNeighbors(node: GNode) {
         let neighbors = [];
 
         for (let i in node.Edges) {
@@ -114,7 +114,7 @@ export class Graph {
         return neighbors;
     };
 
-    GetChildren(node) {
+    GetChildren(node: GNode) {
         let children = [];
 
         for (let i in node.Edges) {
@@ -126,7 +126,7 @@ export class Graph {
         return children;
     };
 
-    GetParents(node) {
+    GetParents(node: GNode) {
         let parents = [];
 
         for (let i in node.Edges) {
@@ -138,11 +138,11 @@ export class Graph {
         return parents;
     };
 
-    GetEdge(ID) {
+    GetEdge(ID: string) {
         return this.Edges[ID];
     };
 
-    NewEdge(ID, parent, child, host) {
+    NewEdge(ID: string, parent: GNode, child: GNode, host: string) {
         let edge = new Edge(ID);
         edge.Parent = parent;
         edge.Child = child;
@@ -157,7 +157,7 @@ export class Graph {
         return edge;
     };
 
-    DelNode(node) {
+    DelNode(node: GNode) {
         for (let i in node.Edges) {
             this.DelEdge(this.Edges[i]);
         }
@@ -165,7 +165,7 @@ export class Graph {
         delete this.Nodes[node.ID];
     };
 
-    DelEdge(edge) {
+    DelEdge(edge: Edge) {
         delete edge.Parent.Edges[edge.ID];
         delete edge.Child.Edges[edge.ID];
         delete this.Edges[edge.ID];

@@ -80,14 +80,14 @@ export class WSHandler {
     };
   }
 
-  addMsgHandler(namespace, callback) {
+  addMsgHandler(namespace: string, callback: (msg: string) => void) {
     if (!this.msgHandlers[namespace]) {
       this.msgHandlers[namespace] = [];
     }
     this.msgHandlers[namespace].push(callback);
   }
 
-  addConnectHandler(callback) {
+  addConnectHandler(callback: () => void) {
     this.connHandlers.push(callback);
     if (this.connected !== null) {
       this.connected.then(function () {
@@ -96,12 +96,12 @@ export class WSHandler {
     }
   }
 
-  delConnectHandler(callback) {
+  delConnectHandler(callback: () => void) {
     this.connHandlers.splice(
       this.connHandlers.indexOf(callback), 1);
   }
 
-  addDisconnectHandler(callback) {
+  addDisconnectHandler(callback: () => void) {
     this.discHandlers.push(callback);
     if (this.disconnected !== null) {
       this.disconnected.then(function () {
@@ -110,11 +110,11 @@ export class WSHandler {
     }
   }
 
-  addErrorHandler(callback) {
+  addErrorHandler(callback: () => void) {
     this.errorHandlers.push(callback);
   }
 
-  send(msg) {
+  send(msg: any) {
     this.conn.send(JSON.stringify(msg));
   }
 

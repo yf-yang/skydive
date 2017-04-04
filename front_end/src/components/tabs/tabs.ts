@@ -32,25 +32,25 @@ export class TabPane extends Vue {
 })
 class Tabs extends Vue {
 
-  panes: any[];
+  panes: TabPane[];
   selected: number;
 
   data() {
     return {
-      panes: [],
+      panes: [] as TabPane[],
       selected: 0
     };
   }
 
-  select(index) {
+  select(index: number) {
     this.selected = index;
   }
 
-  addPane(pane) {
+  addPane(pane: TabPane) {
     this.panes.push(pane);
   }
 
-  removePane(pane) {
+  removePane(pane: TabPane) {
     let idx = this.panes.indexOf(pane);
     this.panes.splice(idx, 1);
     if (idx <= this.selected) {

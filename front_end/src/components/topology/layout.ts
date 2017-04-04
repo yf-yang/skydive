@@ -1,4 +1,4 @@
-import { Message, Graph, GNode, Edge, Group } from './graph';
+import { Message, Metadata, Graph, GNode, Edge, Group } from './graph';
 import { TopologyComponent } from './topology';
 import * as lscache from 'lscache';
 import { websocket, store } from '../../app';
@@ -22,6 +22,12 @@ interface Link extends d3.layout.force.Link<GNode> {
     source: GNode;
     target: GNode;
     edge: Edge;
+}
+
+interface GroupData {
+    Group: string;
+    Type: string;
+    path: [number, number][];
 }
 
 interface DeferredAction {
@@ -62,7 +68,7 @@ export class TopologyLayout {
     force: d3.layout.Force<Link, GNode>;
     drag: d3.behavior.Drag<GNode>;
 
-    constructor(vm, selector) {
+    constructor(vm: TopologyComponent, selector: string) {
         let self = this;
         this.vm = vm;
         this.graph = new Graph();
@@ -232,15 +238,15 @@ export class TopologyLayout {
         this.view.attr('transform', 'translate(' + trans + ')' + ' scale(' + scale + ')');
     };
 
-    SetPosition(x, y) {
+    SetPosition(x: number, y: number) {
         this.view.attr('x', x).attr('y', y);
     };
 
-    SetNodeClass(ID, clazz, active) {
+    SetNodeClass(ID: string, clazz: string, active: boolean) {
         d3.select('#node-' + ID).classed(clazz, active);
     };
 
-    Hash(str) {
+    Hash(str: string) {
         let chars = str.split('');
 
         let hash = 2342;
@@ -252,7 +258,7 @@ export class TopologyLayout {
         return hash;
     };
 
-    AddNode(node) {
+    AddNode(node: GNode) {
         if (node.ID in this.elements)
             return;
 
@@ -275,11 +281,11 @@ export class TopologyLayout {
         this.Redraw();
     };
 
-    UpdateNode = function (node, metadata) {
+    UpdateNode = function (node: GNode, metadata: Metadata) {
         node.Metadata = metadata;
     };
 
-    DelNode(node) {
+    DelNode(node: GNode) {
         if (this.synced && store.state.currentNode &&
             store.state.currentNode.ID === node.ID) {
             store.commit('unselected');
@@ -299,7 +305,7 @@ export class TopologyLayout {
         this.Redraw();
     };
 
-    AddEdge(edge) {
+    AddEdge(edge: Edge) {
         if (edge.ID in this.elements)
             return;
 
@@ -350,7 +356,7 @@ export class TopologyLayout {
         this.Redraw();
     };
 
-    DelEdge(edge) {
+    DelEdge(edge: Edge) {
         if (!(edge.ID in this.elements))
             return;
 
@@ -378,7 +384,7 @@ export class TopologyLayout {
         this.Redraw();
     };
 
-    Tick(e) {
+    Tick(e: d3.BaseEvent) {
         this.link.attr('d', this.linkArc);
 
         this.node.attr('cx', function (d) { return d.x; })
@@ -426,7 +432,7 @@ export class TopologyLayout {
         return size;
     };
 
-    GroupClass(d: Group) {
+    GroupClass(d: GroupData) {
         return 'group ' + d.Type;
     };
 
@@ -478,6 +484,7 @@ export class TopologyLayout {
             case 'neutron':
                 return neutronImg;
         }
+        return null;
     };
 
     NodeManagerStyle(d: GNode) {
@@ -566,7 +573,7 @@ export class TopologyLayout {
         return parent;
     };
 
-    AddNodeToGroup(ID, type, node, groups) {
+    AddNodeToGroup(ID: string, type: string, node: GNode, groups: { [key: string]: Group; }) {
         let group = groups[ID] || (groups[ID] = new Group(ID, type));
         if (node.ID in group.Nodes)
             return;
@@ -575,8 +582,8 @@ export class TopologyLayout {
         if (node.Group === '')
             node.Group = ID;
 
-        if (isNaN(parseFloat(node.x)))
-            return;
+        // if (isNaN(parseFloat(node.x)))
+        //    return;
 
         if (!node.Visible)
             return;
@@ -596,7 +603,7 @@ export class TopologyLayout {
 
     // add node to parent group until parent is of type host
     // this means a node can be in multiple group
-    addNodeToParentGroup(parent, node, groups) {
+    addNodeToParentGroup(parent: GNode, node: GNode, groups: { [key: string]: Group; }) {
         if (parent) {
             let groupID = parent.ID;
 
@@ -662,7 +669,7 @@ export class TopologyLayout {
         }
     };
 
-    Groups() {
+    Groups(): GroupData[] {
         let groupArray = [];
 
         this.UpdateGroups();
@@ -673,7 +680,7 @@ export class TopologyLayout {
         return groupArray;
     };
 
-    DrawCluster(d) {
+    DrawCluster(d: GroupData) {
         let curve = d3.svg.line()
             .interpolate('cardinal-closed')
             .tension(0.90);
@@ -681,7 +688,7 @@ export class TopologyLayout {
         return curve(d.path);
     };
 
-    GetNodeText(d) {
+    GetNodeText(d: GNode) {
         let name = this.graph.GetNode(d.ID).Metadata.Name;
         if (name.length > 10)
             name = name.substr(0, 8) + '.';
@@ -689,7 +696,7 @@ export class TopologyLayout {
         return name;
     };
 
-    CollapseNetNS(node) {
+    CollapseNetNS(node: GNode) {
         for (let i in node.Edges) {
             let edge = node.Edges[i];
 
@@ -705,7 +712,7 @@ export class TopologyLayout {
         }
     };
 
-    CollapseHost(hostNode) {
+    CollapseHost(hostNode: GNode) {
         let fabricNode;
         let isCollapsed = hostNode.Collapsed ? false : true;
 
@@ -754,7 +761,7 @@ export class TopologyLayout {
         hostNode.Collapsed = isCollapsed;
     };
 
-    CollapseNode(d) {
+    CollapseNode(d: GNode) {
         if ((d3.event as any).defaultPrevented)
             return;
 
@@ -896,14 +903,14 @@ export class TopologyLayout {
         // bounding boxes for groups
         this.groupsG.selectAll('path.group').remove();
         this.group = this.groupsG.selectAll('path.group');
-        this.group.data<Group>(this.Groups()).enter().append('path')
-            .attr('class', function (d) {
+        this.group.data<GroupData>(this.Groups()).enter().append('path')
+            .attr('class', function (d: GroupData) {
                 return _this.GroupClass(d);
             })
-            .attr('id', function (d) {
-                return d.ID; // Was group - does not exists
+            .attr('id', function (d: GroupData) {
+                return d.Group; 
             })
-            .attr('d', function (d) {
+            .attr('d', function (d: GroupData) {
                 return _this.DrawCluster(d);
             });
 
@@ -941,8 +948,8 @@ export class TopologyLayout {
             return;
         }
 
-        let node;
-        let edge;
+        let node: GNode;
+        let edge: Edge;
         switch (msg.Type) {
             case 'SyncReply':
                 this.synced = false;
@@ -1026,10 +1033,10 @@ export class TopologyLayout {
         this.alerts[ID] = msg.Obj;
         this.Redraw();
 
-        window.setTimeout(function () { delete this.alerts[ID]; _this.Redraw(); }, 1000);
+        window.setTimeout(function () { delete _this.alerts[ID]; _this.Redraw(); }, 1000);
     };
 
-    SyncRequest(t) {
+    SyncRequest(t: number) {
         if (t && t === store.state.time) {
             return;
         }

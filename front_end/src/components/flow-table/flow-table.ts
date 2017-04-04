@@ -3,7 +3,7 @@ import Vue from 'vue';
 import Component from 'vue-class-component';
 import { Prop, Watch } from 'vue-property-decorator';
 import { debounce } from '../../utils';
-import { apiMixin, ApiMixinContract } from '../../api';
+import { apiMixin, ApiMixinContract, FlowReply, NodeReply, Reply } from '../../api';
 
 @Component({
   mixins: [apiMixin],
@@ -12,7 +12,7 @@ import { apiMixin, ApiMixinContract } from '../../api';
 
 class FilterSelector extends Vue implements ApiMixinContract {
 
-  $topologyQuery: (q: string) => JQueryPromise<any>;
+  $topologyQuery: (q: string) => JQueryPromise<Reply[]>;
   $captureList: () => JQueryPromise<any>;
   $captureCreate: (q: string, n: string, d: string) => JQueryPromise<any>;
   $captureDelete: (uuid: string) => JQueryPromise<any>;
@@ -45,7 +45,7 @@ class FilterSelector extends Vue implements ApiMixinContract {
     if (!this.key)
       return $.Deferred().resolve([]);
     return this.$topologyQuery(this.query + '.Values(\'' + this.key + '\').Dedup()')
-      .then(function (values) {
+      .then(function (values: Reply[] ) {
         return values.map(function (v) { return v.toString(); });
       });
   }
@@ -57,10 +57,15 @@ class FilterSelector extends Vue implements ApiMixinContract {
     }
   }
 
-  remove(key, index) {
+  remove(key: string, index: number) {
     this.$emit('remove', key, index);
   }
 };
+
+interface Mode { 
+  field: string;
+  label: string;
+}
 
 @Component({
   template: require('./highlight-mode.html'),
@@ -70,7 +75,7 @@ class HighlightMode extends Vue {
   @Prop()
   value: string;
 
-  highlightModes: { field: string, label: string }[];
+  highlightModes: Mode [];
 
   data() {
     return {
@@ -96,7 +101,7 @@ class HighlightMode extends Vue {
     }, '');
   }
 
-  select(mode) {
+  select(mode: Mode) {
     this.$emit('input', mode.field);
   }
 };
@@ -119,7 +124,7 @@ class IntervalButton extends Vue {
     return 'Every ' + this.value / 1000 + 's';
   }
 
-  select(value) {
+  select(value: number) {
     this.$emit('input', value);
   }
 };
@@ -145,17 +150,22 @@ class LimitButton extends Vue {
     return 'Limit: ' + this.value;
   }
 
-  valueText(value) {
+  valueText(value: number) {
     if (value === 0)
       return 'No limit';
     return value;
   }
 
-  select(value) {
+  select(value: number) {
     this.$emit('input', value);
   }
 };
 
+interface Field {
+  name: string[];
+  label: string;
+  show: boolean;
+}
 
 @Component({
   template: require('./flow-table.html'),
@@ -177,30 +187,30 @@ class FlowTable extends Vue implements ApiMixinContract {
   @Prop()
   value: string;
 
-  queryResults: any[];
+  queryResults: FlowReply [];
   queryError: string;
   limit: number;
   sortBy: string[];
   sortOrder: number;
   interval: number;
   autoRefresh: boolean;
-  showDetail: {};
+  showDetail: {[key: string]: boolean; };
   highlightMode: string;
-  filters: {};
-  fields: { name: string[], label: string, show: boolean }[];
+  filters: { [key: string]: {}[]; };
+  fields: Field[];
   intervalId: number;
 
   data() {
     return {
-      queryResults: [],
+      queryResults: [] as FlowReply [],
       queryError: '',
       limit: 30,
-      sortBy: null,
+      sortBy: null as string [],
       sortOrder: -1,
       interval: 1000,
-      intervalId: null,
+      intervalId: null as number,
       autoRefresh: false,
-      showDetail: {},
+      showDetail: { } as { [key: string]: boolean; },
       highlightMode: 'TrackingID',
       filters: {},
       fields: [
@@ -300,7 +310,7 @@ class FlowTable extends Vue implements ApiMixinContract {
 
 
   @Watch('autoRefresh')
-  watchAutoRefresh(newVal) {
+  watchAutoRefresh(newVal: boolean) {
     if (newVal === true)
       this.startAutoRefresh();
     else
@@ -338,14 +348,14 @@ class FlowTable extends Vue implements ApiMixinContract {
   // When Dedup() is used we show the detail of
   // the flow using TrackingID because the flow
   // returned has not always the same UUID
-  get showDetailField() {
+  get showDetailField(): string {
     if (this.value.search('Dedup') !== -1) {
       return 'TrackingID';
     }
     return 'UUID';
   }
 
-  get timedQuery() {
+  get timedQuery(): string {
     return this.setQueryTime(this.value);
   }
 
@@ -385,11 +395,11 @@ class FlowTable extends Vue implements ApiMixinContract {
   getFlows() {
     let self = this;
     this.$topologyQuery(this.limitedQuery)
-      .then(function (flows) {
+      .then(function (flows: FlowReply[]) {
         // much faster than replacing
         // the array with vuejs
         self.queryResults.splice(0);
-        flows.forEach(function (f) {
+        flows.forEach(function (f: FlowReply) {
           self.queryResults.push(f);
         });
       })
@@ -399,19 +409,19 @@ class FlowTable extends Vue implements ApiMixinContract {
       });
   }
 
-  setQueryTime(query) {
+  setQueryTime(query: string) {
     if (this.time !== 0) {
       return query.replace('G.', 'G.At(' + this.time + ').');
     }
     return query;
   }
 
-  hasFlowDetail(flow) {
+  hasFlowDetail(flow: FlowReply) {
     return this.showDetail[flow[this.showDetailField]] || false;
   }
 
   // Keep track of which flow detail we should display
-  toggleFlowDetail(flow) {
+  toggleFlowDetail(flow: FlowReply) {
     if (this.showDetail[flow[this.showDetailField]]) {
       Vue.delete(this.showDetail, flow[this.showDetailField]);
     } else {
@@ -419,12 +429,12 @@ class FlowTable extends Vue implements ApiMixinContract {
     }
   }
 
-  highlightNodes(obj, bool) {
+  highlightNodes(obj: any, bool: boolean) {
     let self = this,
       query = 'G.Flows().Has(\'' + this.highlightMode + '\', \'' + obj[this.highlightMode] + '\').Nodes()';
     query = this.setQueryTime(query);
     this.$topologyQuery(query)
-      .then(function (nodes) {
+      .then(function (nodes: NodeReply []) {
         nodes.forEach(function (n) {
           if (bool)
             self.$store.commit('highlight', n.ID);
@@ -437,7 +447,7 @@ class FlowTable extends Vue implements ApiMixinContract {
       });
   }
 
-  compareFlows(f1, f2) {
+  compareFlows(f1: FlowReply , f2: FlowReply) {
     if (!this.sortBy) {
       return 0;
     }
@@ -450,7 +460,7 @@ class FlowTable extends Vue implements ApiMixinContract {
     return 0;
   }
 
-  fieldValue(object, paths) {
+  fieldValue(object: any, paths: string []) {
     for (let path of paths) {
       let value = object;
       for (let k of path.split('.')) {
@@ -468,29 +478,29 @@ class FlowTable extends Vue implements ApiMixinContract {
     return '';
   }
 
-  sort(sortBy) {
+  sort(sortBy: string []) {
     this.sortBy = sortBy;
   }
 
-  order(sortOrder) {
+  order(sortOrder: number) {
     this.sortOrder = sortOrder;
   }
 
-  addFilter(key, value) {
+  addFilter(key: string, value: string) {
     if (!this.filters[key]) {
       Vue.set(this.filters, key, []);
     }
     this.filters[key].push(value);
   }
 
-  removeFilter(key, index) {
+  removeFilter(key: string, index: number) {
     this.filters[key].splice(index, 1);
     if (this.filters[key].length === 0) {
       Vue.delete(this.filters, key);
     }
   }
 
-  toggleField(field) {
+  toggleField(field: Field) {
     field.show = !field.show;
   }
 }
@@ -518,7 +528,7 @@ class FlowTableControl extends Vue implements ApiMixinContract {
     return {
       query: 'G.Flows().Sort()',
       validatedQuery: 'G.Flows().Sort()',
-      validationId: null,
+      validationId: null as string,
       error: '',
     };
   }

@@ -2,7 +2,7 @@
 import Vue from 'vue';
 import Component from 'vue-class-component';
 import { Watch, Prop } from 'vue-property-decorator';
-import { apiMixin, ApiMixinContract } from '../../api';
+import { apiMixin, ApiMixinContract, NodeReply } from '../../api';
 import { NotificationMixinContract, notificationMixin, NotifOptions } from '../notifications/notifications';
 
 @Component({
@@ -11,7 +11,7 @@ import { NotificationMixinContract, notificationMixin, NotifOptions } from '../n
 })
 export class CaptureForm extends Vue implements NotificationMixinContract, ApiMixinContract {
 
-  $topologyQuery: (q: string) => JQueryPromise<any>;
+  $topologyQuery: (q: string) => JQueryPromise<NodeReply[]>;
   $captureList: () => JQueryPromise<any>;
   $captureCreate: (q: string, n: string, d: string, b: string) => JQueryPromise<any>;
   $captureDelete: (uuid: string) => JQueryPromise<any>;
@@ -23,7 +23,7 @@ export class CaptureForm extends Vue implements NotificationMixinContract, ApiMi
 
   node1: string;
   node2: string;
-  queryNodes: any[];
+  queryNodes: NodeReply [];
   name: string;
   desc: string;
   bpf: string;
@@ -35,7 +35,7 @@ export class CaptureForm extends Vue implements NotificationMixinContract, ApiMi
     return {
       node1: '',
       node2: '',
-      queryNodes: [],
+      queryNodes: [] as NodeReply [],
       name: '',
       desc: '',
       bpf: '',
@@ -55,13 +55,13 @@ export class CaptureForm extends Vue implements NotificationMixinContract, ApiMi
     } else if (this.mode === 'selection' && !this.node1) {
       return 'At least one interface has to be selected';
     } else {
-      return;
+      return null;
     }
   }
 
   get query() {
     if (this.queryError) {
-      return;
+      return null;
     }
     if (this.mode === 'gremlin') {
       return this.userQuery;
@@ -74,7 +74,7 @@ export class CaptureForm extends Vue implements NotificationMixinContract, ApiMi
   }
 
   @Watch('visible')
-  watchVisible(newValue) {
+  watchVisible(newValue: boolean) {
     if (newValue === true &&
       this.$store.state.currentNode &&
       this.$store.state.currentNode.IsCaptureAllowed() &&
@@ -84,7 +84,7 @@ export class CaptureForm extends Vue implements NotificationMixinContract, ApiMi
   }
 
   @Watch('query')
-  watchQuery(newQuery) {
+  watchQuery(newQuery: string) {
     let self = this;
     if (!newQuery) {
       this.resetQueryNodes();

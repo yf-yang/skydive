@@ -18,6 +18,8 @@ interface DiscoveryNode extends d3.layout.partition.Node, d3.svg.arc.Arc {
   dx0?: number;
 }
 
+interface ProtocolData { Name: string; Percentage: string; Size: number; Value: number; Depth: number }
+
 @Component({
   template: require('./discovery.html')
 })
@@ -27,13 +29,13 @@ export class DiscoveryComponent extends Vue {
   layout: DiscoveryLayout;
 
   name = 'discovery'
-  protocolData: {};
+  protocolData: ProtocolData;
   type: string;
   mode: string;
 
   data() {
     return {
-      protocolData: null,
+      protocolData: null as ProtocolData,
       type: 'bytes',
       mode: 'count',
     };
@@ -55,14 +57,13 @@ export class DiscoveryComponent extends Vue {
   }
 }
 
-interface ProtocolData { Name: string; Percentage: string; Size: number; Value: number; Depth: number }
 
 class DiscoveryLayout {
   width: number;
   height: number;
   radius: number;
   color: d3.scale.Ordinal<string, string>;
-  vm: { node: any, protocolData: ProtocolData };
+  vm: DiscoveryComponent;
   b: Breadcrumb;
   svg: d3.Selection<any>;
   partition: d3.layout.Partition<DiscoveryNode>;
@@ -71,7 +72,7 @@ class DiscoveryLayout {
   frameElement: string;
 
 
-  constructor(vm, selector) {
+  constructor(vm: DiscoveryComponent, selector: string) {
     this.vm = vm;
     this.width = 680;
     this.height = 600;
@@ -106,9 +107,9 @@ class DiscoveryLayout {
   }
 
 
-  ChangeMode(mode) {
+  ChangeMode(mode: string) {
     var self = this;
-    var value = mode === 'count' ? function () { return 1; } : function (d) { return d.size; };
+    var value = mode === 'count' ? function () { return 1; } : function (d: DiscoveryNode) { return d.size; };
 
     // Interpolate the arcs in data space.
     function arcTween(a: DiscoveryNode): (t: number) => d3.Primitive {
@@ -128,7 +129,7 @@ class DiscoveryLayout {
       .attrTween('d', arcTween);
   }
 
-  DrawChart(type) {
+  DrawChart(type: string) {
     var totalSize = 0;
     this.svg.selectAll('*').remove();
     var self = this;
@@ -164,7 +165,7 @@ class DiscoveryLayout {
     }
 
     // On mouseleave function
-    function mouseleave(d) {
+    function mouseleave(d: DiscoveryNode) {
       d3.select('#trail')
         .style('visibility', 'hidden');
       self.vm.protocolData = null;
@@ -172,18 +173,18 @@ class DiscoveryLayout {
 
     // Given a node in a partition layout, return an array of all of its ancestor
     // nodes, highest first, but excluding the root.
-    function getAncestors(node) {
+    function getAncestors(node: DiscoveryNode ): DiscoveryNode [] {
       var path = [];
       var current = node;
       while (current.parent) {
         path.unshift(current);
-        current = current.parent;
+        current = current.parent as any;
       }
       return path;
     }
 
     // Generate a string that describes the points of a breadcrumb polygon.
-    function breadcrumbPoints(d, i) {
+    function breadcrumbPoints(d: DiscoveryNode, i: number) {
       var points = [];
       points.push('0,0');
       points.push(self.b.w + ',0');
@@ -240,7 +241,7 @@ class DiscoveryLayout {
     }
 
     // Stash the old values for transition.
-    function stash(d) {
+    function stash(d: DiscoveryNode) {
       d.x0 = d.x;
       d.dx0 = d.dx;
     }
