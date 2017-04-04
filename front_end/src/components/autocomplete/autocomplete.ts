@@ -24,7 +24,7 @@ export class Autocomplete extends Vue {
     return {
       open: false,
       current: 0,
-      fetchedSuggestions: []
+      fetchedSuggestions: [] as string []
     };
   }
 
@@ -61,7 +61,7 @@ export class Autocomplete extends Vue {
     }
   }
 
-  click(index) {
+  click(index: number) {
     if (this.openSuggestion === true) {
       this.open = false;
       this.$emit('input', this.matches[index]);
@@ -78,11 +78,11 @@ export class Autocomplete extends Vue {
       this.current++;
   }
 
-  isActive(index) {
+  isActive(index: number) {
     return index === this.current;
   }
 
-  change(value) {
+  change(value: number) {
     this.debouncedFetch();
     if (this.open === false) {
       this.open = true;

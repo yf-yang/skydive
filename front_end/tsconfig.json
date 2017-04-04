@@ -7,6 +7,9 @@
       "es2015.promise"
     ],
     "module": "es2015",
+    "noImplicitAny": true,
+    "noImplicitReturns": true,
+    "noImplicitThis": true,
     "moduleResolution": "node",
     "target": "es5",
     "sourceMap": true,

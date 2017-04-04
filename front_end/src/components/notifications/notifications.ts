@@ -53,7 +53,7 @@ export interface NotificationMixinContract extends Vue {
 
 export const notificationMixin = {
   methods: {
-    $notify: function(this: NotificationMixinContract, options) {
+    $notify: function(this: NotificationMixinContract, options: NotifOptions) {
       this.$store.commit('addNotification', Object.assign({
         type: 'info',
         title: '',
@@ -62,7 +62,7 @@ export const notificationMixin = {
       }, options));
     },
 
-    $error: function(this: NotificationMixinContract, options) {
+    $error: function(this: NotificationMixinContract, options: NotifOptions) {
       this.$store.commit('addNotification', Object.assign({
         type: 'danger',
         title: '',
@@ -71,7 +71,7 @@ export const notificationMixin = {
       }, options));
     },
 
-    $success: function (this: NotificationMixinContract, options) {
+    $success: function (this: NotificationMixinContract, options: NotifOptions) {
       this.$store.commit('addNotification', Object.assign({
         type: 'success',
         title: '',

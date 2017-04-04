@@ -3,18 +3,34 @@ import Vue from 'vue';
 import Component from 'vue-class-component';
 import { NotifOptions, NotificationMixinContract } from './components/notifications/notifications';
 
+export interface NodeReply {
+  ID: string;
+  Host: string;
+  CreatedAt: number;
+  UpdatedAt: number;
+  Metadata: { [key: string]: string; };
+}
+
+export interface FlowReply {
+  UUID: string;
+  [key: string]: any;
+}
+
+export type Reply = NodeReply | FlowReply;
+
 export interface ApiMixinContract extends Vue {
-  $topologyQuery: (query: string) => JQueryPromise<any>;
+  $topologyQuery: (query: string) => JQueryPromise<Reply []>;
   $captureList: () => JQueryPromise<any>;
   $captureCreate: (query: string, name: string, desc: string, bpf: string) => JQueryPromise<any>;
   $captureDelete: (uuid: string) => JQueryPromise<any>;
 }
 
 
+
 export const apiMixin = {
   methods: {
 
-    $topologyQuery: function (this: ApiMixinContract, gremlinQuery: string) {
+    $topologyQuery: function (this: ApiMixinContract, gremlinQuery: string): JQueryPromise< Reply []> {
       return $.ajax({
         dataType: 'json',
         url: '/api/topology',

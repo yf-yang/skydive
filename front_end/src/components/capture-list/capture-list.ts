@@ -2,8 +2,14 @@
 import Vue from 'vue';
 import Component from 'vue-class-component';
 import { Watch, Prop } from 'vue-property-decorator';
-import { apiMixin, ApiMixinContract } from '../../api';
+import { apiMixin, ApiMixinContract, NodeReply } from '../../api';
+import { Message } from '../topology/graph';
 import { websocket } from '../../app';
+
+interface ICapture {
+  UUID: string;
+  GremlinQuery: string;
+};
 
 @Component({
   mixins: [apiMixin],
@@ -11,7 +17,7 @@ import { websocket } from '../../app';
 })
 class Capture extends Vue implements ApiMixinContract {
 
-  $topologyQuery: (q: string) => JQueryPromise<any>;
+  $topologyQuery: (q: string) => JQueryPromise<NodeReply[]>;
   $captureList: () => JQueryPromise<any>;
   $captureCreate: (q: string, n: string, d: string) => JQueryPromise<any>;
   $captureDelete: (uuid: string) => JQueryPromise<any>;
@@ -33,7 +39,7 @@ class Capture extends Vue implements ApiMixinContract {
     return this.capture.GremlinQuery.search('ShortestPathTo') === -1;
   };
 
-  remove(capture) {
+  remove(capture: ICapture) {
     let self = this,
       uuid = capture.UUID;
     this.deleting = true;
@@ -43,7 +49,7 @@ class Capture extends Vue implements ApiMixinContract {
       });
   }
 
-  highlightCaptureNodes(capture, bool) {
+  highlightCaptureNodes(capture: ICapture, bool: boolean) {
     let self = this;
     // Avoid highlighting the nodes while the capture
     // is being deleted
@@ -52,7 +58,7 @@ class Capture extends Vue implements ApiMixinContract {
     }
     this.$topologyQuery(capture.GremlinQuery)
       .then(function (nodes) {
-        nodes.forEach(function (n) {
+        nodes.forEach(function (n: NodeReply) {
           if (bool)
             self.$store.commit('highlight', n.ID);
           else
@@ -75,14 +81,14 @@ export class CaptureList extends Vue implements ApiMixinContract {
   $captureDelete: (uuid: string) => JQueryPromise<any>;
 
   captures: {};
-  deleting: {}[];
+  deleting: boolean;
   timer: {};
 
   data() {
     return {
       captures: {},
-      deleting: [],
-      timer: null
+      deleting: false,
+      timer: null as {}
     };
   }
 
@@ -107,7 +113,7 @@ export class CaptureList extends Vue implements ApiMixinContract {
       });
   }
 
-  onMsg(msg) {
+  onMsg(msg: Message) {
     switch (msg.Type) {
       case 'CaptureDeleted':
         Vue.delete(this.captures, msg.Obj.UUID);
