@@ -81,3 +81,5 @@ export const notificationMixin = {
     }
   }
 };
+
+export function register() { Vue.component('notifications', Notifications); }
