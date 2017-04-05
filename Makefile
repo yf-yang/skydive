@@ -38,9 +38,11 @@ COVERAGE_MODE?=atomic
 
 all: govendor genlocalfiles
 	${GOPATH}/bin/govendor install ${GOFLAGS} ${VERBOSE_FLAGS} +local
+	cd front_end && npm install
 
 install: govendor genlocalfiles
 	${GOPATH}/bin/govendor install ${GOFLAGS} ${VERBOSE_FLAGS} +local
+	cd front_end && npm install
 
 build: govendor genlocalfiles
 	${GOPATH}/bin/govendor build ${GOFLAGS} ${VERBOSE_FLAGS} +local
