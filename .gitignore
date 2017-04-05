@@ -6,7 +6,7 @@ contrib/packaging/rpm/*.tar.gz
 flow/*.pb.go
 statics/bindata.go
 front_end/node_modules
-front_end/dist
+front_end/statics
 front_end/src/**/*.js
 front_end/src/**/*.js.map
 

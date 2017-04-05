@@ -33,16 +33,14 @@ COVERAGE_MODE?=atomic
 
 .bindata: builddep
 	cd front_end && npm run build
-	go-bindata ${GO_BINDATA_FLAGS} -nometadata -o statics/bindata.go -pkg=statics -ignore=bindata.go front_end/dist/* front_end/dist/css/images/*  
+	go-bindata ${GO_BINDATA_FLAGS} -prefix front_end -nometadata -o statics/bindata.go -pkg=statics -ignore=bindata.go front_end/statics/...
 	gofmt -w -s statics/bindata.go
 
 all: govendor genlocalfiles
 	${GOPATH}/bin/govendor install ${GOFLAGS} ${VERBOSE_FLAGS} +local
-	cd front_end && npm install
 
 install: govendor genlocalfiles
 	${GOPATH}/bin/govendor install ${GOFLAGS} ${VERBOSE_FLAGS} +local
-	cd front_end && npm install
 
 build: govendor genlocalfiles
 	${GOPATH}/bin/govendor build ${GOFLAGS} ${VERBOSE_FLAGS} +local
@@ -95,6 +93,7 @@ else
 endif
 
 govendor:
+	cd front_end && npm install
 	go get github.com/kardianos/govendor
 	${GOPATH}/bin/govendor sync
 

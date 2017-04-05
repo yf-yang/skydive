@@ -8,7 +8,7 @@ let config = {
     "app": helpers.root("/src/app.ts")
   },
   output: {
-    path: helpers.root("/dist/js"),
+    path: helpers.root("/statics/js"),
     filename: "[name].js"
   },
   devtool: "source-map",

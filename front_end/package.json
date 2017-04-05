@@ -11,12 +11,12 @@
   "scripts": {
     "build": "cross-env NODE_ENV=production npm run clean && npm run build:parts && npm run process:html",
     "build:parts": "npm run compile",
-    "clean": "rimraf dist",
+    "clean": "rimraf statics",
     "compile": "webpack --config config/webpack.config.prod.js",
     "dev": "webpack-dev-server --hot --inline",
     "lint": "tslint src/**/*.ts",
-    "process:html": "htmlprocessor src/index.html -o dist/index.html",
-    "serve": "http-server dist/ -o"
+    "process:html": "htmlprocessor src/index.html -o statics/index.html",
+    "serve": "http-server statics/ -o"
   },
   "dependencies": {
     "@types/d3": "^3.5.38",
