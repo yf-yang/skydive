@@ -62,7 +62,7 @@ export class TopologyLayout {
     groupsG: d3.Selection<{}>;
     link: d3.Selection<Link>;
     node: d3.Selection<GNode>;
-    group: d3.Selection<Group>;
+    group: d3.Selection<GroupData>;
 
 
     force: d3.layout.Force<Link, GNode>;
@@ -902,8 +902,8 @@ export class TopologyLayout {
 
         // bounding boxes for groups
         this.groupsG.selectAll('path.group').remove();
-        this.group = this.groupsG.selectAll('path.group');
-        this.group.data<GroupData>(this.Groups()).enter().append('path')
+        this.group = this.groupsG.selectAll('path.group')
+            .data<GroupData>(this.Groups()).enter().append('path')
             .attr('class', function (d: GroupData) {
                 return _this.GroupClass(d);
             })
