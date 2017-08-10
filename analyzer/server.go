@@ -39,6 +39,7 @@ import (
 	ftraversal "github.com/skydive-project/skydive/flow/traversal"
 	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/logging"
+	"github.com/skydive-project/skydive/ovs/simulator"
 	"github.com/skydive-project/skydive/packet_injector"
 	"github.com/skydive-project/skydive/probe"
 	"github.com/skydive-project/skydive/topology"
@@ -144,6 +145,8 @@ func (s *Server) initialize() (err error) {
 	api.RegisterPcapAPI(s.HTTPServer, s.Storage)
 
 	api.RegisterConfigAPI(s.HTTPServer)
+
+	simulator.NewSimulatorAPI(s.TopologyServer.Graph, s.HTTPServer, s.WSServer)
 
 	return nil
 }
