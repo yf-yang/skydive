@@ -333,13 +333,6 @@ var BridgeLayout = (function () {
     return portname;
   };
 
-  /** Check if rule is highlighted. */
-  BridgeLayout.prototype.isHighlighted = function(rule) {
-    var current = this.store.state.currentRule;
-    var status = current && rule.UUID === current.metadata.UUID;
-    return status;
-  };
-
   return BridgeLayout;
 }());
 
@@ -360,7 +353,7 @@ Vue.component('rule-table-detail', {
         <tbody>\
             <tr v-for="rule in rules"\
                 :id="\'R-\' + rule.UUID"\
-                v-bind:class="{soft: layout.isHighlighted(rule)}">\
+                v-bind:class="{\'rule-selected\': isHighlighted(rule)}">\
                 <td>{{rule.filters}}</td>\
                 <td>\
                     <table>\
@@ -382,6 +375,7 @@ Vue.component('rule-table-detail', {
         </tbody>\
       </table>\
     </div>',
+
   props: {
     rules: {
       type: Object,
@@ -390,6 +384,14 @@ Vue.component('rule-table-detail', {
     layout: {
       type: Object,
       required: true
+    }
+  },
+
+  methods: {
+    isHighlighted: function (rule) {
+      var current = this.$store.state.currentRule;
+      var status = current && rule.UUID === current.metadata.UUID;
+      return status;
     }
   },
 });
@@ -508,13 +510,13 @@ Vue.component('rule-detail', {
       },
       function (newNode, oldNode) {
         if (oldNode) {
-          $('#R-' + oldNode.metadata.UUID).removeClass('soft');
+          $('#R-' + oldNode.metadata.UUID).removeClass('rule-selected');
         }
         if (newNode) {
           self.layout.switchTab(newNode.metadata.table);
           var p = inport(newNode.metadata.filters);
           self.layout.switchPortTab(newNode.metadata.table, p);
-          $('#R-' + newNode.metadata.UUID).addClass('soft');
+          $('#R-' + newNode.metadata.UUID).addClass('rule-selected');
         }
       }
     )

@@ -11,6 +11,7 @@ var neutronImg = 'statics/img/openstack.png';
 var minusImg = 'statics/img/minus-outline-16.png';
 var plusImg = 'statics/img/plus-16.png';
 var captureIndicatorImg = 'statics/img/media-record.png';
+var sandboxIndicatorImg = 'statics/img/sandbox.png';
 var pinIndicatorImg = 'statics/img/pin.png';
 
 var TopologyGraphLayout = function(vm, selector) {
@@ -50,6 +51,8 @@ var TopologyGraphLayout = function(vm, selector) {
     .on("dblclick.zoom", null);
 
   this.g = this.svg.append("g");
+
+  this.sandboxed = [];
 
   this.group = this.g.append("g").attr('class', 'groups').selectAll(".group");
   this.link = this.g.append("g").attr('class', 'links').selectAll(".link");
@@ -641,6 +644,21 @@ TopologyGraphLayout.prototype = {
     this.g.select("#node-" + d.id).select('image.capture').remove();
   },
 
+  sandboxStarted: function(d) {
+    var size = this.nodeSize(d);
+    this.g.select("#node-" + d.id).append("image")
+      .attr("class", "sandbox")
+      .attr("x", -size + 8)
+      .attr("y", size)
+      .attr("width", 16)
+      .attr("height", 16)
+      .attr("xlink:href", sandboxIndicatorImg);
+  },
+
+  sandboxStopped: function(id) {
+    this.g.select("#node-" + id).select('image.sandbox').remove();
+  },
+
   pinNode: function(d) {
     var size = this.nodeSize(d);
     this.g.select("#node-" + d.id).append("image")
@@ -1071,6 +1089,9 @@ TopologyGraphLayout.prototype = {
 
     nodeEnter.filter(function(d) { return d.metadata.Capture; })
       .each(this.captureStarted.bind(this));
+
+    nodeEnter.filter(function(d) { return self.sandboxed.indexOf(d.id) != -1; })
+      .each(this.sandboxStarted.bind(this));
 
     nodeEnter.filter(function(d) { return d.metadata.Manager; })
       .each(this.managerSet.bind(this));

@@ -51,6 +51,9 @@ var TopologyComponent = {
           <tab-pane title="Flows">\
             <flow-table-control></flow-table-control>\
           </tab-pane>\
+          <tab-pane title="Sandbox">\
+            <sandbox-form :graph="graph"></sandbox-form>\
+          </tab-pane>\
         </tabs>\
         <transition name="slide" mode="out-in">\
           <div class="left-panel" v-if="currentNode">\
@@ -137,6 +140,26 @@ var TopologyComponent = {
         self.layout.unhighlightNodeID(mutation.payload);
     });
 
+    this.$store.watch(
+      function () { return self.$store.state.sandbox; },
+      function (newSandbox, oldSandbox) {
+        if (oldSandbox) {
+          var content = oldSandbox.content;
+          for (var i=0; i < content.length; i++) {
+            self.layout.sandboxStopped(content[i]);
+          }
+        }
+        if (newSandbox) {
+          var content = newSandbox.content;
+          for (var i=0; i < content.length; i++) {
+            self.layout.sandboxStarted(self.graph.getNode(content[i]));
+          }
+          self.layout.sandboxed = content;
+        } else {
+          self.layout.sandboxed = [];
+        }
+      }
+    )
   },
 
   beforeDestroy: function() {
@@ -173,7 +196,7 @@ var TopologyComponent = {
   computed: {
 
     history: function() {
-      return this.$store.state.history;
+      return this.$store.state.history && !this.$store.state.sandbox;
     },
 
     isAnalyzer: function() {
@@ -425,6 +448,10 @@ Graph.prototype = {
     this.notifyHandlers('nodeAdded', node);
   },
 
+  getNode: function(id) {
+    return this.nodes[id];
+  },
+
   updateNode: function(id, metadata) {
     this.nodes[id].metadata = metadata;
 
@@ -501,6 +528,7 @@ Graph.prototype = {
   },
 
   addEdge: function(id, host, metadata, source, target) {
+    if (!source || !target) return
     var self = this;
 
     var edge = new Edge(id, host, metadata, source, target);

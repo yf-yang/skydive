@@ -12,11 +12,13 @@ var store = new Vuex.Store({
     currentNode: null,
     highlightedNodes: [],
     notifications: [],
+    sandbox: null,
+    currentRule: null,
   },
 
   getters: {
 
-    timeHuman: function(state) {
+    timeHuman: function (state) {
       var d = new Date(state.time);
       return d.toLocaleTimeString();
     },
@@ -25,68 +27,80 @@ var store = new Vuex.Store({
 
   mutations: {
 
-    history: function(state, support) {
+    history: function (state, support) {
       state.history = support;
     },
 
-    time: function(state, time) {
+    time: function (state, time) {
       state.time = time;
     },
 
-    login: function(state) {
+    login: function (state) {
       state.logged = true;
     },
 
-    logout: function(state) {
+    logout: function (state) {
       state.logged = false;
     },
 
-    connected: function(state) {
+    connected: function (state) {
       state.connected = true;
     },
 
-    disconnected: function(state) {
+    disconnected: function (state) {
       state.connected = false;
     },
 
-    selected: function(state, node) {
+    selected: function (state, node) {
       state.currentNode = node;
     },
 
-    unselected: function(state) {
+    unselected: function (state) {
       state.currentNode = null;
     },
 
-    highlight: function(state, id) {
+    selectedRule: function (state, node) {
+      state.currentRule = node;
+    },
+
+    unselectedRule: function (state) {
+      state.currentRule = null;
+    },
+
+    sandbox: function (state, sandbox) {
+      state.sandbox = sandbox;
+    },
+
+    highlight: function (state, id) {
       state.highlightedNodes.push(id);
     },
 
-    unhighlight: function(state, id) {
-      state.highlightedNodes = state.highlightedNodes.filter(function(_id) {
+    unhighlight: function (state, id) {
+      state.highlightedNodes = state.highlightedNodes.filter(function (_id) {
         return id !== _id;
       });
     },
 
-    service: function(state, service) {
+    service: function (state, service) {
       state.service = service.charAt(0).toUpperCase() + service.slice(1);
     },
 
-    version: function(state, version) {
+    version: function (state, version) {
       state.version = version;
     },
 
-    addNotification: function(state, notification) {
+    addNotification: function (state, notification) {
       if (state.notifications.length > 0 &&
-          state.notifications.some(function(n) {
-            return n.message === notification.message;
-          })) {
+        state.notifications.some(function (n) {
+          return n.message === notification.message;
+        })) {
         return;
       }
       state.notifications.push(notification);
     },
 
-    removeNotification: function(state, notification) {
-      state.notifications = state.notifications.filter(function(n) {
+    removeNotification: function (state, notification) {
+      state.notifications = state.notifications.filter(function (n) {
         return n !== notification;
       });
     },
@@ -97,10 +111,11 @@ var store = new Vuex.Store({
 
 var routes = [
   { path: '/login', component: LoginComponent },
-  { path: '/logout',
+  {
+    path: '/logout',
     component: {
       template: '<div></div>',
-      created: function() {
+      created: function () {
         document.cookie = document.cookie + ';expires=Thu, 01 Jan 1970 00:00:01 GMT;';
         this.$store.commit('logout');
       }
@@ -119,7 +134,7 @@ var router = new VueRouter({
 
 // if not logged, always route to /login
 // if already logged don't route to /login
-router.beforeEach(function(to, from, next) {
+router.beforeEach(function (to, from, next) {
   if (store.state.logged === false && to.path !== '/login')
     next('/login');
   else if (store.state.logged === true && to.path == '/login')
@@ -135,7 +150,7 @@ var app = new Vue({
 
   mixins: [notificationMixin, apiMixin],
 
-  created: function() {
+  created: function () {
     var self = this;
 
     websocket.addConnectHandler(self.onConnected.bind(self));
@@ -147,10 +162,10 @@ var app = new Vue({
     this.interval = null;
 
     // global handler to detect authorization errors
-    $(document).ajaxError(function(evt, e) {
+    $(document).ajaxError(function (evt, e) {
       switch (e.status) {
         case 401:
-          self.$error({message: 'Authentication failed'});
+          self.$error({ message: 'Authentication failed' });
           self.$store.commit('logout');
           break;
       }
@@ -163,7 +178,7 @@ var app = new Vue({
 
   watch: {
 
-    logged: function(newVal) {
+    logged: function (newVal) {
       var self = this;
       if (newVal === true) {
         this.checkAPI();
@@ -175,10 +190,10 @@ var app = new Vue({
 
         // check if the Analyzer supports history
         this.$topologyQuery("G.At('-1m').V().Limit(1)")
-          .then(function() {
+          .then(function () {
             self.$store.commit('history', true);
           })
-          .fail(function() {
+          .fail(function () {
             self.$store.commit('history', false);
           });
       } else {
@@ -194,53 +209,53 @@ var app = new Vue({
 
   methods: {
 
-    checkAPI: function() {
+    checkAPI: function () {
       var self = this;
       return $.ajax({
         dataType: "json",
         url: '/api',
       })
-      .then(function(r) {
-        if (!self.$store.state.logged)
-          self.$store.commit('login');
-        if (self.$store.state.service != r.Service)
-          self.$store.commit('service', r.Service);
-        if (self.$store.state.version != r.Version)
-          self.$store.commit('version', r.Version);
-        return r;
-      });
+        .then(function (r) {
+          if (!self.$store.state.logged)
+            self.$store.commit('login');
+          if (self.$store.state.service != r.Service)
+            self.$store.commit('service', r.Service);
+          if (self.$store.state.version != r.Version)
+            self.$store.commit('version', r.Version);
+          return r;
+        });
     },
 
-    onConnected: function() {
+    onConnected: function () {
       var self = this;
 
       self.$store.commit('connected');
-      self.$success({message: 'Connected'});
+      self.$success({ message: 'Connected' });
     },
 
-    onDisconnected: function() {
+    onDisconnected: function () {
       var self = this;
 
       self.$store.commit('disconnected');
-      self.$error({message: 'Disconnected'});
+      self.$error({ message: 'Disconnected' });
 
       if (self.$store.state.logged)
-        setTimeout(function(){websocket.connect();}, 1000);
+        setTimeout(function () { websocket.connect(); }, 1000);
     },
 
-    onError: function() {
+    onError: function () {
       var self = this;
 
       if (self.$store.state.connected)
         self.$store.commit('disconnected');
 
-      setTimeout(function(){websocket.connect();}, 1000);
+      setTimeout(function () { websocket.connect(); }, 1000);
     },
   }
 
 });
 
-$(document).ready(function() {
+$(document).ready(function () {
   Vue.config.devtools = true;
 
   Vue.use(VTooltip, {});
