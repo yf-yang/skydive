@@ -106,11 +106,11 @@ text.link-label {
   font-weight: bold;
 }
 
-text.link-label-alert {
+.link-label-alert {
   fill: #ff4a4a;;
 }
 
-text.link-label-warning {
+.link-label-warning {
   stroke: #000;
   fill: #ffa330;
 }

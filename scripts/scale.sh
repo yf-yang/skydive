@@ -321,6 +321,17 @@ analyzer:
   X509_key: $ANALYZER_KEY
   storage:
     backend: $STORAGE
+    bandwidth_update_rate: 5
+  # interface metrics - 'netlink'
+  # captured flows TxBytes + RxByte - 'flows' (need to turn on capture)
+  bandwidth_source: netlink
+  # 'absolute' - thresholds in Kbit
+  # 'relative' - thresholds in % relative to link speed reported by netlink
+  bandwidth_threshold: absolute
+  bandwidth_absolute_active: 1
+  bandwidth_absolute_warning: 10
+  bandwidth_absolute_alert: 15
+
   topology:
     fabric:
 EOF
