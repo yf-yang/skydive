@@ -1,0 +1,157 @@
+
+{
+    "$schema":"http://json-schema.org/draft-07/schema#",
+    "$id":"http://skydive.github.com/openflow.schema.json",
+    "title": "Openflow rules in JSON",
+    "oneOf": [
+        { "$ref": "#/definitions/rule" },
+        { "$ref": "#/definitions/group" }
+    ],
+    "definitions": {
+        "rule": {
+            "type": ["object"],
+            "properties": {
+                "priority": {
+                    "type": "integer",
+                    "description": "Priority of the rule"
+                },
+                "cookie": {
+                    "type": "integer",
+                    "description": "Cookie of the rule"
+                },
+                "table": {
+                    "type": "integer",
+                    "description": "table of the rule"
+                },
+                "meta": {
+                    "description": "All the fields we do not really use as duration, counters",
+                    "type": "array",
+                    "items": { "$ref": "#/definitions/meta" }
+                },
+                "filters": {
+                    "description": "the filters of the rule (without priority which is not a filter)",
+                    "type": ["array", "null"],
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "k": {
+                                "description": "name of the filtered element",
+                                "type":"string"
+                            },
+                            "v": {
+                                "description": "value expected",
+                                "type":"string"
+                            },
+                            "m": {
+                                "description": "if provided a mask for the relevant bits checked",
+                                "type":"string"
+                            },
+                            "f": {
+                                "description": "format should be something like d,x or s may be with size",
+                                "type":"string"
+                            }
+                        },
+                        "required": ["f", "v"]
+                    },
+                    "$comment" : "We assume that abbreviated fields are translated into canonical ones eg: ip => { 'name': 'eth_type', 'value': '0x0800' } We assume that we only have the largest field for fields with subfields We assume that we only have 1.5 canonical names or Nicira names only when no standard name exists."
+                },
+                "actions": {
+                    "$comment": "output actions are normalized we use symbolic names for standard output ports, integers for others if args is provided we have a function otherwise it is a value standardize load/set (tricky. probably require field length) name start end field when used as explicit start end keys. if arguments are positional, use their index as their key. arrays: sometimes values are array. We code them as a call to an array function.",
+                    "description": "list of actions of the rule",
+                    "type": "array",
+                    "items": { "$ref": "#/definitions/action" }
+                }
+            },
+            "required": ["priority", "table", "filters", "actions"]
+        },
+        "group": {
+            "type": ["object"],
+            "properties": {
+                "group_id": {
+                    "description": "id of the group",
+                    "type": ["number"]
+                },
+                "type": {
+                    "description": "type of the group (all, select, indirect, fast_failover)",
+                    "type": ["string"]
+                },
+                "meta": {
+                    "type": ["array"],
+                    "description": "any additional parameter (selection method, fields)",
+                    "items": {
+                        "$ref": "#/definitions/meta"
+                    }
+                },
+                "buckets": {
+                    "type": ["array"],
+                    "description": "the bucket list, order is relevant.",
+                    "items": {
+                        "$ref": "#/definitions/bucket"
+                    }
+                }
+            },
+            "required": ["group_id", "bucket"]
+        },
+        "bucket": {
+            "type": ["object"],
+            "properties": {
+                "id": {
+                    "description": "id of bucket (Openflow 1.5)",
+                    "type": ["number"]
+                },
+                "meta": {
+                    "type": ["array"],
+                    "items": {
+                        "$ref": "#/definitions/meta"
+                    },
+                    "required": ["k"]
+                },
+                "actions": {
+                    "description": "list of actions",
+                    "type": ["array"],
+                    "items": {
+                        "$ref": "#/definitions/action"
+                    }
+                }
+            }
+        },
+        "meta": {
+            "type": ["object"],
+            "properties": {
+                "k": {
+                    "description": "key of the element (defined by ovs)",
+                    "type": ["string"]
+                },
+                "v": {
+                    "description": "value of the element",
+                    "type": ["string"]
+                }
+            },
+            "required": ["k"]
+        },
+        "action": {
+            "type": ["object"],
+            "properties": {
+                "f": {
+                    "description": "action function or value if no argument or 'array' for arrays",
+                    "type":"string"
+                },
+                "a": {
+                    "description": "a list of arguments described as action items (use null for non supplied positional argument)",
+                    "type": "array",
+                    "items": {
+                        "oneOf": [
+                            { "type": "null" },
+                            { "$ref": "#/definitions/action" }
+                        ]
+                    }
+                },
+                "k": {
+                    "description": "for named arguments, the name used",
+                    "type":"string"
+                }
+            },
+            "required": ["f"]
+        }
+    }
+}
