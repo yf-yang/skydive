@@ -514,8 +514,8 @@ docker-image: static
 	cp $$GOPATH/bin/skydive contrib/docker/skydive.$$(uname -m)
 	docker build -t ${DOCKER_IMAGE}:${DOCKER_TAG} --build-arg ARCH=$$(uname -m) -f contrib/docker/Dockerfile contrib/docker/
 
-.PHONY: docker-build
-docker-build:
+.PHONY: docker-compile
+docker-compile:
 	docker build -t skydive-compile \
 		--build-arg UID=$$(id -u) \
 		-f contrib/docker/Dockerfile.compile  contrib/docker
@@ -530,6 +530,10 @@ docker-build:
 		skydive-compile
 	docker cp skydive-compile-build:/root/go/bin/skydive contrib/docker/skydive.$$(uname -m)
 	docker rm skydive-compile-build
+
+.PHONY: docker-build
+docker-build: docker-compile
+	docker rmi ${DOCKER_IMAGE}:${DOCKER_TAG} || true
 	docker build -t ${DOCKER_IMAGE}:${DOCKER_TAG} \
 		--label "Version=${VERSION}" \
 		--build-arg ARCH=$$(uname -m) \
