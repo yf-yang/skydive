@@ -25,12 +25,14 @@ package nsm
 import (
 	"context"
 	"net"
+	"strconv"
 	"sync/atomic"
 	"time"
 
 	"github.com/golang/protobuf/ptypes/empty"
 	"github.com/ligato/networkservicemesh/controlplane/pkg/apis/crossconnect"
 	"github.com/skydive-project/skydive/common"
+	"github.com/skydive-project/skydive/filters"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/topology/graph"
 	"google.golang.org/grpc"
@@ -60,22 +62,66 @@ func (p *Probe) run() {
 	}
 
 	client := crossconnect.NewMonitorCrossConnectClient(p.conn)
-
-	// Looping indefinetly or until grpc returns an error indicating the other end closed connection.
-	go monitorNSM(client)
+	stream, err := client.MonitorCrossConnects(context.Background(), &empty.Empty{})
+	if err != nil {
+		logging.GetLogger().Warningf("Error: %+v.", err)
+		return
+	}
 
 	for atomic.LoadInt64(&p.state) == common.RunningState {
-		p.g.Lock()
+		event, err := stream.Recv()
+		if err != nil {
+			logging.GetLogger().Errorf("Error: %+v.", err)
+			return
+		}
+		logging.GetLogger().Infof("Event type: %+v", event.Type)
+		for _, v := range event.CrossConnects {
+			logging.GetLogger().Infof("CrossConnect ID: %s", v.Id)
+			logging.GetLogger().Infof("local source: %s", v.GetLocalSource())
+			logging.GetLogger().Infof("local dest: %s", v.GetLocalDestination())
+			logging.GetLogger().Infof("CrossConnect Payload: %s", v.Payload)
 
-		// creates two nodes
-		n1 := p.g.NewNode(graph.GenID("NODE1"), graph.Metadata{"Name": "node1", "Type": "vm"})
-		n2 := p.g.NewNode(graph.GenID("NODE2"), graph.Metadata{"Name": "node2", "Type": "vm"})
+			//add the crossconnect to the graph if elements exists
+			//TODO: factorizing in a dedicated function
+			src := v.GetLocalSource()
+			dst := v.GetLocalDestination()
+			srcInode, err := strconv.ParseInt(src.Mechanism.Parameters["inode"], 10, 64)
+			if err != nil {
+				logging.GetLogger().Errorf("error converting inode %s to int64", src.Mechanism.Parameters["inode"])
+				continue
+			}
+			dstInode, err := strconv.ParseInt(dst.Mechanism.Parameters["inode"], 10, 64)
+			if err != nil {
+				logging.GetLogger().Errorf("error converting inode %s to int64", dst.Mechanism.Parameters["inode"])
+				continue
+			}
 
-		// link them
-		p.g.NewEdge(graph.GenID("NODE1/NODE2"), n1, n2, graph.Metadata{"Type": "l2vpn"})
+			p.g.Lock()
+			srcfilter := graph.NewElementFilter(filters.NewTermInt64Filter("Inode", srcInode))
+			srcns := p.g.LookupFirstNode(srcfilter)
+			if srcns == nil {
+				logging.GetLogger().Errorf("src inode not found")
+				p.g.Unlock()
+				continue
+			}
+			dstfilter := graph.NewElementFilter(filters.NewTermInt64Filter("Inode", dstInode))
+			dstns := p.g.LookupFirstNode(dstfilter)
+			if dstns == nil {
+				logging.GetLogger().Errorf("dst inode not found")
+				p.g.Unlock()
+				continue
+			}
+			if event.Type != crossconnect.CrossConnectEventType_DELETE {
 
-		p.g.Unlock()
+				//n1 := p.g.NewNode(graph.GenID(src.Id), graph.Metadata{"NetworkService": src.NetworkService})
+				//n2 := p.g.NewNode(graph.GenID(dst.Id), graph.Metadata{"NetworkService": dst.NetworkService})
+				p.g.NewEdge(graph.GenID(v.Id), srcns, dstns, graph.Metadata{"Id": v.Id, "Payload": v.Payload})
 
+			} else {
+				p.g.Unlink(srcns, dstns)
+			}
+			p.g.Unlock()
+		}
 		time.Sleep(1 * time.Second)
 	}
 }
@@ -112,21 +158,5 @@ func dial(ctx context.Context, network string, address string) (*grpc.ClientConn
 }
 
 func monitorNSM(client crossconnect.MonitorCrossConnectClient) {
-	stream, err := client.MonitorCrossConnects(context.Background(), &empty.Empty{})
-	if err != nil {
-		logging.GetLogger().Warningf("Error: %+v.", err)
-		return
-	}
-	result := []*crossconnect.CrossConnectEvent{}
-	for {
-		event, err := stream.Recv()
-		if err != nil {
-			logging.GetLogger().Errorf("Error: %+v.", err)
-			return
-		}
-		logging.GetLogger().Infof("Events: %+v", event)
-		result = append(result, event)
-	}
-
 	//wait for a chan to close conn?
 }

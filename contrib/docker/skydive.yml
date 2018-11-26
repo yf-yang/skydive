@@ -1,7 +1,6 @@
 agent:
   topology:
     probes:
-      - ovsdb
       - docker
 
 analyzer:
