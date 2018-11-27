@@ -8,6 +8,11 @@ analyzer:
   topology:
     probes:
       - nsm
+    nsm:
+      servers:
+        - 127.0.0.1:5007
 
 etcd:
   data_dir: /tmp/skydive/etcd
+
+

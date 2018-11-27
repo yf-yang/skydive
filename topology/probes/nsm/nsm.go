@@ -33,6 +33,7 @@ import (
 	cc "github.com/ligato/networkservicemesh/controlplane/pkg/apis/crossconnect"
 	localconn "github.com/ligato/networkservicemesh/controlplane/pkg/apis/local/connection"
 	"github.com/skydive-project/skydive/common"
+	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/filters"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/topology/graph"
@@ -49,38 +50,50 @@ type Probe struct {
 func (p *Probe) run() {
 	atomic.StoreInt64(&p.state, common.RunningState)
 
-	logging.GetLogger().Debugf("NSM probe process...")
+	logging.GetLogger().Debugf("NSM: running probe")
 
 	var err error
-	for {
-		p.conn, err = dial(context.Background(), "tcp", "127.0.0.1:5007")
-		if err != nil {
-			logging.GetLogger().Errorf("NSM: failure to communicate with the socket %s with error: %+v", "127.0.0.1:5007", err)
-			time.Sleep(1 * time.Second)
-			continue
-		}
-		break
+	nsmds := config.GetStringSlice("analyzer.topology.nsm.servers")
+	if len(nsmds) == 0 {
+		logging.GetLogger().Errorf("NSM: no nsm server specified in config file")
+		return
 	}
-
-	client := cc.NewMonitorCrossConnectClient(p.conn)
-	stream, err := client.MonitorCrossConnects(context.Background(), &empty.Empty{})
+	sa, err := common.ServiceAddressFromString(nsmds[0])
 	if err != nil {
-		logging.GetLogger().Warningf("Error: %+v.", err)
+		logging.GetLogger().Errorf("NSM: error parsing nsm server address: %v", err)
+	}
+	p.conn, err = dial(context.Background(), "tcp", sa.String())
+	if err != nil {
+		logging.GetLogger().Errorf("NSM: unable to create grpc dialer, error: %+v", err)
 		return
 	}
 
+	client := cc.NewMonitorCrossConnectClient(p.conn)
+	//TODO: grpc is automagically trying to reconnect
+	// better understand the process to handle corner cases
+	stream, err := client.MonitorCrossConnects(context.Background(), &empty.Empty{})
+	if err != nil {
+		logging.GetLogger().Errorf("NSM: unable to connect to grpc server, error: %+v.", err)
+		return
+	}
+
+	//TODO: consider moving this function to
+	// https://github.com/ligato/networkservicemesh/blob/master/controlplane/pkg/apis/local/connection/mechanism_helpers.go
 	getLocalInode := func(conn *localconn.Connection) (int64, error) {
 		inode_str := conn.Mechanism.Parameters["inode"]
 		inode, err := strconv.ParseInt(inode_str, 10, 64)
 		if err != nil {
-			logging.GetLogger().Errorf("error converting inode %s to int64", inode_str)
+			logging.GetLogger().Errorf("NSM: error converting inode %s to int64", inode_str)
 			return 0, err
 		}
 		return inode, nil
 	}
 
 	for atomic.LoadInt64(&p.state) == common.RunningState {
+		//TODO: loop each nsmd servers in dedicated goroutines
+		logging.GetLogger().Debugf("NSM: waiting for events")
 		event, err := stream.Recv()
+		logging.GetLogger().Debugf("NSM: received monitoring event of type %s", event.Type)
 		if err != nil {
 			logging.GetLogger().Errorf("Error: %+v.", err)
 			return
@@ -106,7 +119,7 @@ func (p *Probe) run() {
 			}
 			p.updateGraph(src_inode, dst_inode, event.Type, cconn)
 		}
-		time.Sleep(1 * time.Second)
+		//time.Sleep(1 * time.Second)
 	}
 }
 
