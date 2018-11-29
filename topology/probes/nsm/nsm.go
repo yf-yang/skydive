@@ -24,7 +24,9 @@ package nsm
 
 import (
 	"context"
+	//"flag"
 	"net"
+	//	"path/filepath"
 	"strconv"
 	"sync/atomic"
 	"time"
@@ -32,19 +34,23 @@ import (
 	"github.com/golang/protobuf/ptypes/empty"
 	cc "github.com/ligato/networkservicemesh/controlplane/pkg/apis/crossconnect"
 	localconn "github.com/ligato/networkservicemesh/controlplane/pkg/apis/local/connection"
+	"github.com/ligato/networkservicemesh/k8s/pkg/networkservice/clientset/versioned"
 	"github.com/skydive-project/skydive/common"
-	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/filters"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/topology/graph"
 	"google.golang.org/grpc"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/rest"
+	//"k8s.io/client-go/tools/clientcmd"
+	//"k8s.io/client-go/util/homedir"
 )
 
 // Probe ...
 type Probe struct {
 	g     *graph.Graph
 	state int64
-	conn  *grpc.ClientConn
+	nsmds map[string]*grpc.ClientConn
 }
 
 func (p *Probe) run() {
@@ -52,23 +58,50 @@ func (p *Probe) run() {
 
 	logging.GetLogger().Debugf("NSM: running probe")
 
-	var err error
-	nsmds := config.GetStringSlice("analyzer.topology.nsm.servers")
-	if len(nsmds) == 0 {
-		logging.GetLogger().Errorf("NSM: no nsm server specified in config file")
+	logging.GetLogger().Debugf("NSM: getting k8s config")
+	// check if CRD is installed
+	config, err := rest.InClusterConfig()
+	if err != nil {
+		logging.GetLogger().Errorf("Unable to get in cluster config, attempting to fall back to kubeconfig", err)
 		return
 	}
-	sa, err := common.ServiceAddressFromString(nsmds[0])
+
+	logging.GetLogger().Debugf("NSM: getting NSM client")
+	// Initialize clientset
+	nsmClientSet, err := versioned.NewForConfig(config)
 	if err != nil {
-		logging.GetLogger().Errorf("NSM: error parsing nsm server address: %v", err)
+		logging.GetLogger().Errorf("Unable to initialize nsmd-k8s", err)
+		return
 	}
-	p.conn, err = dial(context.Background(), "tcp", sa.String())
+
+	result, err := nsmClientSet.Networkservicemesh().NetworkServiceManagers("default").List(metav1.ListOptions{})
+	if err != nil {
+		logging.GetLogger().Errorf("Unable to find NSMs", err)
+		return
+	}
+	for _, mgr := range result.Items {
+		//TODO: loop each nsmd servers monitoring in dedicated goroutines
+		if _, ok := p.nsmds[mgr.Status.URL]; !ok {
+
+			logging.GetLogger().Infof("Found nsmd: %s at %s", mgr.Name, mgr.Status.URL)
+			go p.monitorCrossConnects(mgr.Status.URL)
+		}
+	}
+	for atomic.LoadInt64(&p.state) == common.RunningState {
+
+		time.Sleep(1 * time.Second)
+	}
+}
+
+func (p *Probe) monitorCrossConnects(url string) {
+	var err error
+	p.nsmds[url], err = dial(context.Background(), "tcp", url)
 	if err != nil {
 		logging.GetLogger().Errorf("NSM: unable to create grpc dialer, error: %+v", err)
 		return
 	}
 
-	client := cc.NewMonitorCrossConnectClient(p.conn)
+	client := cc.NewMonitorCrossConnectClient(p.nsmds[url])
 	//TODO: grpc is automagically trying to reconnect
 	// better understand the process to handle corner cases
 	stream, err := client.MonitorCrossConnects(context.Background(), &empty.Empty{})
@@ -77,8 +110,7 @@ func (p *Probe) run() {
 		return
 	}
 
-	for atomic.LoadInt64(&p.state) == common.RunningState {
-		//TODO: loop each nsmd servers monitoring in dedicated goroutines
+	for {
 		logging.GetLogger().Debugf("NSM: waiting for events")
 		event, err := stream.Recv()
 		logging.GetLogger().Debugf("NSM: received monitoring event of type %s", event.Type)
@@ -90,7 +122,6 @@ func (p *Probe) run() {
 		for _, cconn := range event.CrossConnects {
 			p.updateGraph(event.Type, cconn)
 		}
-		//time.Sleep(1 * time.Second)
 	}
 }
 
@@ -154,14 +185,15 @@ func (p *Probe) Start() {
 // Stop ....
 func (p *Probe) Stop() {
 	atomic.CompareAndSwapInt64(&p.state, common.RunningState, common.StoppingState)
-	p.conn.Close()
+	for _, conn := range p.nsmds {
+		conn.Close()
+	}
 }
 
 // NewProbe ...
 func NewNsmProbe(g *graph.Graph) (*Probe, error) {
 	probe := &Probe{
-		g:    g,
-		conn: nil,
+		g: g,
 	}
 	atomic.StoreInt64(&probe.state, common.StoppedState)
 
