@@ -128,10 +128,10 @@ func (p *Probe) monitorCrossConnects(url string) {
 //TODO: consider moving this function to
 // https://github.com/ligato/networkservicemesh/blob/master/controlplane/pkg/apis/local/connection/mechanism_helpers.go
 func getLocalInode(conn *localconn.Connection) (int64, error) {
-	inode_str := conn.Mechanism.Parameters["inode"]
-	inode, err := strconv.ParseInt(inode_str, 10, 64)
+	inodeStr := conn.Mechanism.Parameters["inode"]
+	inode, err := strconv.ParseInt(inodeStr, 10, 64)
 	if err != nil {
-		logging.GetLogger().Errorf("NSM: error converting inode %s to int64", inode_str)
+		logging.GetLogger().Errorf("NSM: error converting inode %s to int64", inodeStr)
 		return 0, err
 	}
 	return inode, nil
@@ -145,7 +145,7 @@ func (p *Probe) updateGraph(t cc.CrossConnectEventType, cconn *cc.CrossConnect) 
 	if src == nil {
 		return
 	}
-	src_inode, err := getLocalInode(src)
+	srcInode, err := getLocalInode(src)
 	if err != nil {
 		return
 	}
@@ -153,26 +153,26 @@ func (p *Probe) updateGraph(t cc.CrossConnectEventType, cconn *cc.CrossConnect) 
 	if dst == nil {
 		return
 	}
-	dst_inode, err := getLocalInode(dst)
+	dstInode, err := getLocalInode(dst)
 	if err != nil {
 		return
 	}
-	srcfilter := graph.NewElementFilter(filters.NewTermInt64Filter("Inode", src_inode))
-	src_node := p.g.LookupFirstNode(srcfilter)
-	if src_node == nil {
+	srcfilter := graph.NewElementFilter(filters.NewTermInt64Filter("Inode", srcInode))
+	srcNode := p.g.LookupFirstNode(srcfilter)
+	if srcNode == nil {
 		logging.GetLogger().Errorf("src inode not found")
 		return
 	}
-	dstfilter := graph.NewElementFilter(filters.NewTermInt64Filter("Inode", dst_inode))
-	dst_node := p.g.LookupFirstNode(dstfilter)
-	if dst_node == nil {
+	dstfilter := graph.NewElementFilter(filters.NewTermInt64Filter("Inode", dstInode))
+	dstNode := p.g.LookupFirstNode(dstfilter)
+	if dstNode == nil {
 		return
 	}
 	if t != cc.CrossConnectEventType_DELETE {
-		p.g.NewEdge(graph.GenID(cconn.Id), src_node, dst_node, graph.Metadata{"Id": cconn.Id, "Payload": cconn.Payload, "NetworkService": dst.NetworkService})
+		p.g.NewEdge(graph.GenID(cconn.Id), srcNode, dstNode, graph.Metadata{"Id": cconn.Id, "Payload": cconn.Payload, "NetworkService": dst.NetworkService})
 
 	} else {
-		p.g.Unlink(src_node, dst_node)
+		p.g.Unlink(srcNode, dstNode)
 	}
 	return
 }
@@ -190,7 +190,7 @@ func (p *Probe) Stop() {
 	}
 }
 
-// NewProbe ...
+// NewNsmProbe ...
 func NewNsmProbe(g *graph.Graph) (*Probe, error) {
 	probe := &Probe{
 		g: g,
