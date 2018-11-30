@@ -58,12 +58,18 @@ type remoteConnectionPair struct {
 	bridge  *remoteconn.Connection
 }
 
+type crossConnInodes struct {
+	src int64
+	dst int64
+}
+
 // Probe ...
 type Probe struct {
 	g              *graph.Graph
 	state          int64
 	nsmds          map[string]*grpc.ClientConn
 	remoteConnPool map[string]*remoteConnectionPair
+	crossConn      map[string]*crossConnInodes
 }
 
 func (p *Probe) run() {
@@ -71,7 +77,6 @@ func (p *Probe) run() {
 
 	logging.GetLogger().Debugf("NSM: running probe")
 
-	logging.GetLogger().Debugf("NSM: getting k8s config")
 	// check if CRD is installed
 	config, err := rest.InClusterConfig()
 	if err != nil {
@@ -133,7 +138,24 @@ func (p *Probe) monitorCrossConnects(url string) {
 		}
 
 		for _, cconn := range event.CrossConnects {
-			p.updateGraph(event.Type, cconn)
+			cconnStr := proto.MarshalTextString(cconn)
+
+			lSrc := cconn.GetLocalSource()
+			rSrc := cconn.GetRemoteSource()
+			lDst := cconn.GetLocalDestination()
+			rDst := cconn.GetRemoteDestination()
+
+			switch {
+			case lSrc != nil && rSrc == nil && lDst != nil && rDst == nil:
+				logging.GetLogger().Debugf("NSM: Got local to local CrossConnect Msg \n%s", cconnStr)
+				p.updateLocalLocalConn(event.Type, cconn.Id, cconn.Payload, lSrc, lDst)
+			case lSrc == nil && rSrc != nil && lDst != nil && rDst == nil:
+				p.updateRemoteLocalConn(t, cconn.Id, cconn.Payload, rSrc, lDst)
+			case lSrc != nil && rSrc == nil && lDst == nil && rDst != nil:
+				p.updateLocalRemoteConn(t, cconn.Id, cconn.Payload, lSrc, rDst)
+			default:
+				logging.GetLogger().Errorf("Error parsing CrossConnect \n%s", cconnStr)
+			}
 		}
 	}
 }
@@ -150,31 +172,9 @@ func getLocalInode(conn *localconn.Connection) (int64, error) {
 	return inode, nil
 }
 
-func (p *Probe) updateGraph(t cc.CrossConnectEventType, cconn *cc.CrossConnect) {
-	p.g.Lock()
-	defer p.g.Unlock()
-	cconnStr := proto.MarshalTextString(cconn)
-	logging.GetLogger().Debugf("Got CrossConnect Msg \n%s", cconnStr)
-
-	lSrc := cconn.GetLocalSource()
-	rSrc := cconn.GetRemoteSource()
-	lDst := cconn.GetLocalDestination()
-	rDst := cconn.GetRemoteDestination()
-
-	switch {
-	case lSrc != nil && rSrc == nil && lDst != nil && rDst == nil:
-		p.updateLocalLocalConn(t, cconn.Id, cconn.Payload, lSrc, lDst)
-	case lSrc == nil && rSrc != nil && lDst != nil && rDst == nil:
-		p.updateRemoteLocalConn(t, cconn.Id, cconn.Payload, rSrc, lDst)
-	case lSrc != nil && rSrc == nil && lDst == nil && rDst != nil:
-		p.updateLocalRemoteConn(t, cconn.Id, cconn.Payload, lSrc, rDst)
-	default:
-		logging.GetLogger().Errorf("Error parsing CrossConnect \n%s", cconnStr)
-	}
-}
-
 func (p *Probe) updateLocalLocalConn(t cc.CrossConnectEventType, id string, payload string,
 	src *localconn.Connection, dst *localconn.Connection) {
+
 	srcInode, err := getLocalInode(src)
 	if err != nil {
 		return
@@ -183,23 +183,103 @@ func (p *Probe) updateLocalLocalConn(t cc.CrossConnectEventType, id string, payl
 	if err != nil {
 		return
 	}
-	srcFilter := graph.NewElementFilter(filters.NewTermInt64Filter("Inode", srcInode))
-	srcNode := p.g.LookupFirstNode(srcFilter)
-	if srcNode == nil {
-		logging.GetLogger().Errorf("src inode %v not found", srcInode)
-		return
-	}
-	dstFilter := graph.NewElementFilter(filters.NewTermInt64Filter("Inode", dstInode))
-	dstNode := p.g.LookupFirstNode(dstFilter)
-	if dstNode == nil {
-		logging.GetLogger().Errorf("dst inode %v not found", dstInode)
-		return
-	}
+	p.crossConn[id] = &crossConnInodes{src: srcInode, dst: dstInode}
+
 	if t != cc.CrossConnectEventType_DELETE {
-		p.g.NewEdge(graph.GenID(id), srcNode, dstNode, graph.Metadata{"Id": id, "Payload": payload, "NetworkService": dst.NetworkService})
-	} else {
-		p.g.Unlink(srcNode, dstNode)
+		p.addCrossConnToGraph()
 	}
+	//	else {
+	//		if linkExists {
+	//			p.g.Unlink(srcNode, dstNode)
+	//		}
+	//	}
+}
+func (p *Probe) nodeExists(inode int64) *graph.Node {
+	filter := graph.NewElementFilter(filters.NewTermInt64Filter("Inode", inode))
+	node := p.g.LookupFirstNode(filter)
+	if node == nil {
+		logging.GetLogger().Debugf("NSM: no node with inode %v", inode)
+	}
+	return node
+}
+
+func (p *Probe) addCrossConnToGraph() {
+	//TODO: lock the graph
+	//	p.g.Lock()
+	//	defer p.g.Unlock()
+	// --> end up with a deadlock...
+	for k, v := range p.crossConn {
+		s := p.nodeExists(v.src)
+		if s == nil {
+			return
+		}
+		d := p.nodeExists(v.dst)
+		if d == nil {
+			return
+		}
+
+		if !p.g.AreLinked(s, d, nil) {
+			//Add link
+			p.g.NewEdge(graph.GenID(k), s, d, graph.Metadata{"Id": k})
+		} else {
+			logging.GetLogger().Debugf("NSM: link for crossconnect id %v already exist in the graph", k)
+		}
+	}
+}
+
+func (p *Probe) OnNodeAdded(n *graph.Node) {
+	logging.GetLogger().Debugf("NSM: OnNodeAdded")
+	if i, err := n.GetFieldInt64("Inode"); err == nil {
+		logging.GetLogger().Debugf("NSM: node added with inode %v", i)
+		p.addCrossConnToGraph()
+	}
+}
+
+func (p *Probe) OnNodeUpdated(n *graph.Node) { return }
+func (p *Probe) OnNodeDeleted(n *graph.Node) { return }
+func (p *Probe) OnEdgeUpdated(e *graph.Edge) { return }
+func (p *Probe) OnEdgeAdded(e *graph.Edge)   { return }
+func (p *Probe) OnEdgeDeleted(e *graph.Edge) { return }
+
+// Start ...
+func (p *Probe) Start() {
+	p.g.AddEventListener(p)
+	go p.run()
+}
+
+// Stop ....
+func (p *Probe) Stop() {
+	atomic.CompareAndSwapInt64(&p.state, common.RunningState, common.StoppingState)
+	p.g.RemoveEventListener(p)
+	for _, conn := range p.nsmds {
+		conn.Close()
+	}
+}
+
+// NewNsmProbe ...
+func NewNsmProbe(g *graph.Graph) (*Probe, error) {
+	probe := &Probe{
+		g:              g,
+		nsmds:          make(map[string]*grpc.ClientConn),
+		remoteConnPool: make(map[string]*remoteConnectionPair),
+		crossConn:      make(map[string]*crossConnInodes),
+	}
+	atomic.StoreInt64(&probe.state, common.StoppedState)
+
+	return probe, nil
+}
+
+func dial(ctx context.Context, network string, address string) (*grpc.ClientConn, error) {
+	conn, err := grpc.DialContext(ctx, address, grpc.WithInsecure(), grpc.WithBlock(),
+		grpc.WithDialer(func(addr string, timeout time.Duration) (net.Conn, error) {
+			return net.Dial(network, addr)
+		}),
+	)
+	return conn, err
+}
+
+func monitorNSM(client cc.MonitorCrossConnectClient) {
+	//wait for a chan to close conn?
 }
 
 func (p *Probe) updateRemoteLocalConn(t cc.CrossConnectEventType, id string, payload string,
@@ -280,42 +360,4 @@ func (p *Probe) updateLocalRemoteConn(t cc.CrossConnectEventType, id string, pay
 			return
 		}
 	}
-}
-
-// Start ...
-func (p *Probe) Start() {
-	go p.run()
-}
-
-// Stop ....
-func (p *Probe) Stop() {
-	atomic.CompareAndSwapInt64(&p.state, common.RunningState, common.StoppingState)
-	for _, conn := range p.nsmds {
-		conn.Close()
-	}
-}
-
-// NewNsmProbe ...
-func NewNsmProbe(g *graph.Graph) (*Probe, error) {
-	probe := &Probe{
-		g:              g,
-		nsmds:          make(map[string]*grpc.ClientConn),
-		remoteConnPool: make(map[string]*remoteConnectionPair),
-	}
-	atomic.StoreInt64(&probe.state, common.StoppedState)
-
-	return probe, nil
-}
-
-func dial(ctx context.Context, network string, address string) (*grpc.ClientConn, error) {
-	conn, err := grpc.DialContext(ctx, address, grpc.WithInsecure(), grpc.WithBlock(),
-		grpc.WithDialer(func(addr string, timeout time.Duration) (net.Conn, error) {
-			return net.Dial(network, addr)
-		}),
-	)
-	return conn, err
-}
-
-func monitorNSM(client cc.MonitorCrossConnectClient) {
-	//wait for a chan to close conn?
 }
