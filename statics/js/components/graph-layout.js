@@ -251,13 +251,18 @@ var TopologyGraphLayout = function(vm, selector) {
   this.height = $(selector).height();
 
   this.simulation = d3.forceSimulation(Object.values(this.nodes))
-    .force("charge", d3.forceManyBody().strength(-500))
+    .force("charge", d3.forceManyBody().strength(-600))
     .force("link", d3.forceLink(Object.values(this.links)).distance(this.linkDistance).strength(0.9).iterations(2))
-    .force("collide", d3.forceCollide().radius(80).strength(0.1).iterations(1))
+    .force("collide", d3.forceCollide().radius(90).strength(0.2).iterations(1))
     .force("center", d3.forceCenter(this.width / 2, this.height / 2))
     .force("x", d3.forceX(0).strength(0.01))
     .force("y", d3.forceY(0).strength(0.01))
-    .alphaDecay(0.0090);
+    .alphaDecay(0.0050);
+
+  var stop = function() {
+    this.simulation.stop();
+  }
+  this.simulationStop = debounce(stop.bind(self), 2000);
 
   this.zoom = d3.zoom()
     .on("zoom", this.zoomed.bind(this));
@@ -378,6 +383,22 @@ TopologyGraphLayout.prototype = {
     this.svg.transition().duration(500).call(this.zoom.scaleBy, 0.9);
   },
 
+  pinAll: function() {
+    for (var i in this.nodes) {
+      var node = this.nodes[i];
+
+      this.pinNode(node);
+    }
+  },
+
+  unPinAll: function() {
+    for (var i in this.nodes) {
+      var node = this.nodes[i];
+
+      this.unpinNode(node);
+    }
+  },
+
   zoomFit: function() {
     var bounds = this.g.node().getBBox();
     var parent = this.g.node().parentElement;
@@ -442,7 +463,7 @@ TopologyGraphLayout.prototype = {
 
     // application
     if ((e.source.metadata.Type === "netns") && (e.target.metadata.Type === "netns"))
-      return 1800;
+      distance = 200;
 
     if (e.source.group !== e.target.group) {
       if (e.source.isGroupOwner()) {
@@ -948,8 +969,10 @@ TopologyGraphLayout.prototype = {
   },
 
   onNodeDragEnd: function(d) {
-    if (!d3.event.active) this.simulation.alphaTarget(0);
-
+    if (!d3.event.active) { 
+      this.simulation.alphaTarget(0);
+      this.simulationStop();
+    }
     if (d.isGroupOwner()) {
       var i, members = d.group.memberArray.concat(d.group._memberArray);
       for (i = members.length - 1; i >= 0; i--) {
@@ -1510,19 +1533,19 @@ TopologyGraphLayout.prototype = {
       .classed("link-label-alert",  function(d) { return d.alert; })
       .text(function(d) { return d.text; });
 
-    this.linkLabel.each(function(d) {
+    enter.each(function(d) {
       self.g.select("#link-" + d.link.id)
         .classed("link-label-active", d.active)
         .classed("link-label-warning", d.warning)
         .classed("link-label-alert", d.alert)
         .style("stroke-dasharray", self.styleStrokeDasharray(d))
         .style("stroke-dashoffset", self.styleStrokeDashoffset(d))
-        .style("animation", self.styleAnimation(d))
+        //.style("animation", self.styleAnimation(d))
         .style("stroke", self.styleStroke(d));
     });
 
     // force a tick
-    this.tick();
+    //this.tick();
   },
 
   delLinkLabel: function(link) {
@@ -1651,6 +1674,9 @@ TopologyGraphLayout.prototype = {
       .attr("class", this.linkWrapClass)
       .attr("marker-end", function(d) { return self.arrowhead(d.link); });
 
+    linkWrapEnter.filter(function(d) { return d._emphasized; })
+      .each(this.emphasizeEdge.bind(this));
+
     this.linkWrap = linkWrapEnter.merge(this.linkWrap);
 
     this.group = this.group.data(this.groups, function(d) { return d.id; });
@@ -1666,10 +1692,12 @@ TopologyGraphLayout.prototype = {
     this.simulation.nodes(nodes);
     this.simulation.force("link").links(links);
     this.simulation.alpha(1).restart();
+
+    this.simulationStop();
   },
 
   highlightLink: function(d) {
-    if(d.collapse) return;
+    if(d.collapse || d._emphasized) return;
     var t = d3.transition()
       .duration(300)
       .ease(d3.easeLinear);
@@ -1678,7 +1706,7 @@ TopologyGraphLayout.prototype = {
   },
 
   unhighlightLink: function(d) {
-    if(d.collapse) return;
+    if(d.collapse || d._emphasized) return;
     var t = d3.transition()
       .duration(300)
       .ease(d3.easeLinear);
@@ -1719,6 +1747,8 @@ TopologyGraphLayout.prototype = {
   emphasizeNodeID: function(id) {
     var self = this;
 
+    if (!(id in this.nodes) && !(id in this._nodes)) return;
+
     if (id in this.nodes) this.nodes[id]._emphasized = true;
     if (id in this._nodes) this._nodes[id]._emphasized = true;
 
@@ -1736,15 +1766,50 @@ TopologyGraphLayout.prototype = {
       .attr("r", function(d) { return self.nodeSize(d) + 8; });
   },
 
-  deemphasizeNodeID: function(id) {
+  emphasizeEdgeID: function(id) {
+    var self = this;
+
+    if (!(id in this.links) && !(id in this._links)) return;
+
+    if (id in this.links) this.links[id]._emphasized = true;
+    if (id in this._links) this._links[id]._emphasized = true;
+
+    var t = d3.transition()
+      .duration(300)
+      .ease(d3.easeLinear);
+
+    this.g.select("#link-wrap-" + id).transition(t).style("stroke", "rgba(25, 251, 104, 0.50)");
+    this.g.select("#link-" + id).transition(t).style("stroke-width", 2);
+  },
+
+  emphasizeID: function(id) {
+    this.emphasizeNodeID(id);
+    this.emphasizeEdgeID(id);
+  },
+
+  deemphasizeID: function(id) {
     if (id in this.nodes) this.nodes[id]._emphasized = false;
     if (id in this._nodes) this._nodes[id]._emphasized = false;
 
+    if (id in this.links) this.links[id]._emphasized = false;
+    if (id in this._links) this._links[id]._emphasized = false;
+
     this.g.select("#node-emphasize-" + id).remove();
+
+    var t = d3.transition()
+      .duration(300)
+      .ease(d3.easeLinear);
+
+    this.g.select("#link-wrap-" + id).transition(t).style("stroke", null);
+    this.g.select("#link-" + id).transition(t).style("stroke-width", null);
   },
 
   emphasizeNode: function(d) {
     this.emphasizeNodeID(d.id);
+  },
+
+  emphasizeEdge: function(d) {
+    this.emphasizeEdgeID(d.id);
   },
 
   nodeClass: function(d) {

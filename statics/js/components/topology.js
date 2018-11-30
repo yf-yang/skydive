@@ -143,6 +143,24 @@ var TopologyComponent = {
                  :class="{\'glyphicon-resize-full\': currentNode.group.collapsed, \'glyphicon-resize-small\': !currentNode.group.collapsed}" aria-hidden="true"></span>\
             </span>\
           </button>\
+          <button id="pin-all" type="button" class="btn btn-primary" \
+                  title="Collapse" @click="pinAll">\
+            <span class="expand-icon-stack">\
+              <i class="glyphicon glyphicon-pushpin icon-main"></i>\
+            </span>\
+            <span class="expand-icon-stack">\
+              <i class="glyphicon glyphicon-ok-circle icon-sub"></i>\
+            </span>\
+          </button>\
+          <button id="pin-all" type="button" class="btn btn-primary" \
+                title="Collapse" @click="unPinAll">\
+          <span class="expand-icon-stack">\
+            <i class="glyphicon glyphicon-pushpin icon-main"></i>\
+          </span>\
+          <span class="expand-icon-stack">\
+            <i class="glyphicon glyphicon-remove-circle icon-sub"></i>\
+          </span>\
+        </button>\
         </div>\
       </div>\
       <div id="info-panel" class="col-sm-5 sidebar">\
@@ -287,6 +305,7 @@ var TopologyComponent = {
     var emphasizeWatcher = {
       onEdgeAdded: this.emphasize,
       onNodeAdded: this.emphasize,
+      onEdgeDeleted: this.emphasize
     };
     this.graph.addHandler(emphasizeWatcher);
 
@@ -315,9 +334,9 @@ var TopologyComponent = {
       else if (mutation.type === "unhighlight")
         self.layout.unhighlightNodeID(mutation.payload);
       else if (mutation.type === "emphasize")
-        self.layout.emphasizeNodeID(mutation.payload);
+        self.layout.emphasizeID(mutation.payload);
       else if (mutation.type === "deemphasize")
-        self.layout.deemphasizeNodeID(mutation.payload);
+        self.layout.deemphasizeID(mutation.payload);
     });
 
     this.setGremlinFavoritesFromConfig();
@@ -531,6 +550,14 @@ var TopologyComponent = {
       this.layout.zoomFit();
     },
 
+    pinAll: function() {
+      this.layout.pinAll();
+    },
+
+    unPinAll: function() {
+      this.layout.unPinAll();
+    },
+
     topologyFilterClear: function () {
       this.topologyFilter = '';
       this.topologyFilterQuery();
@@ -735,28 +762,41 @@ var TopologyComponent = {
       this.isTopologyOptionsVisible = false;
     },
 
-    emphasizeNodes: function(gremlinExpr) {
+    emphasizeSubgraph: function(gremlinExpr) {
       var self = this;
       var i;
 
       this.$topologyQuery(gremlinExpr)
         .then(function(data) {
           data.forEach(function(sg) {
+            // nodes
             for (i in sg.Nodes) {
               self.$store.commit('emphasize', sg.Nodes[i].ID);
             }
 
+            // edges
+            for (i in sg.Edges) {
+              self.$store.commit('emphasize', sg.Edges[i].ID);
+            }
+
             var toDel = [];
-            for (i in self.$store.state.emphasizedNodes) {
+
+            for (i in self.$store.state.emphasizedIDs) {
               var found = false;
               for (var j in sg.Nodes) {
-                if (self.$store.state.emphasizedNodes[i] === sg.Nodes[j].ID) {
+                if (self.$store.state.emphasizedIDs[i] === sg.Nodes[j].ID) {
+                  found = true;
+                  break;
+                }
+              }
+              for (var j in sg.Edges) {
+                if (self.$store.state.emphasizedIDs[i] === sg.Edges[j].ID) {
                   found = true;
                   break;
                 }
               }
               if (!found) {
-                toDel.push(self.$store.state.emphasizedNodes[i]);
+                toDel.push(self.$store.state.emphasizedIDs[i]);
               }
             }
 
@@ -775,9 +815,9 @@ var TopologyComponent = {
         }
 
         var newGremlinExpr = expr + ".SubGraph()";
-        this.emphasizeNodes(newGremlinExpr);
+        this.emphasizeSubgraph(newGremlinExpr);
       } else {
-        var ids = this.$store.state.emphasizedNodes.slice();
+        var ids = this.$store.state.emphasizedIDs.slice();
         for (var i in ids) {
           this.$store.commit('deemphasize', ids[i]);
         }
