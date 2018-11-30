@@ -31,6 +31,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes/empty"
 	cc "github.com/ligato/networkservicemesh/controlplane/pkg/apis/crossconnect"
 	localconn "github.com/ligato/networkservicemesh/controlplane/pkg/apis/local/connection"
@@ -76,7 +77,7 @@ func (p *Probe) run() {
 
 	result, err := nsmClientSet.Networkservicemesh().NetworkServiceManagers("default").List(metav1.ListOptions{})
 	if err != nil {
-		logging.GetLogger().Errorf("Unable to find NSMs", err)
+		logging.GetLogger().Errorf("Unable to find NSMs, are they running?", err)
 		return
 	}
 	for _, mgr := range result.Items {
@@ -140,6 +141,7 @@ func getLocalInode(conn *localconn.Connection) (int64, error) {
 func (p *Probe) updateGraph(t cc.CrossConnectEventType, cconn *cc.CrossConnect) {
 	p.g.Lock()
 	defer p.g.Unlock()
+	logging.GetLogger().Debugf(proto.MarshalTextString(cconn))
 	//add the crossconnect to the graph if elements exists
 	src := cconn.GetLocalSource()
 	if src == nil {
@@ -157,14 +159,14 @@ func (p *Probe) updateGraph(t cc.CrossConnectEventType, cconn *cc.CrossConnect) 
 	if err != nil {
 		return
 	}
-	srcfilter := graph.NewElementFilter(filters.NewTermInt64Filter("Inode", srcInode))
-	srcNode := p.g.LookupFirstNode(srcfilter)
+	srcFilter := graph.NewElementFilter(filters.NewTermInt64Filter("Inode", srcInode))
+	srcNode := p.g.LookupFirstNode(srcFilter)
 	if srcNode == nil {
 		logging.GetLogger().Errorf("src inode not found")
 		return
 	}
-	dstfilter := graph.NewElementFilter(filters.NewTermInt64Filter("Inode", dstInode))
-	dstNode := p.g.LookupFirstNode(dstfilter)
+	dstFilter := graph.NewElementFilter(filters.NewTermInt64Filter("Inode", dstInode))
+	dstNode := p.g.LookupFirstNode(dstFilter)
 	if dstNode == nil {
 		return
 	}
@@ -193,7 +195,8 @@ func (p *Probe) Stop() {
 // NewNsmProbe ...
 func NewNsmProbe(g *graph.Graph) (*Probe, error) {
 	probe := &Probe{
-		g: g,
+		g:     g,
+		nsmds: make(map[string]*grpc.ClientConn),
 	}
 	atomic.StoreInt64(&probe.state, common.StoppedState)
 
