@@ -61,6 +61,7 @@ type remoteConnectionPair struct {
 type crossConnInodes struct {
 	src int64
 	dst int64
+	ns  string
 }
 
 // Probe ...
@@ -150,9 +151,9 @@ func (p *Probe) monitorCrossConnects(url string) {
 				logging.GetLogger().Debugf("NSM: Got local to local CrossConnect Msg \n%s", cconnStr)
 				p.updateLocalLocalConn(event.Type, cconn.Id, cconn.Payload, lSrc, lDst)
 			case lSrc == nil && rSrc != nil && lDst != nil && rDst == nil:
-				p.updateRemoteLocalConn(t, cconn.Id, cconn.Payload, rSrc, lDst)
+				p.updateRemoteLocalConn(event.Type, cconn.Id, cconn.Payload, rSrc, lDst)
 			case lSrc != nil && rSrc == nil && lDst == nil && rDst != nil:
-				p.updateLocalRemoteConn(t, cconn.Id, cconn.Payload, lSrc, rDst)
+				p.updateLocalRemoteConn(event.Type, cconn.Id, cconn.Payload, lSrc, rDst)
 			default:
 				logging.GetLogger().Errorf("Error parsing CrossConnect \n%s", cconnStr)
 			}
@@ -174,6 +175,8 @@ func getLocalInode(conn *localconn.Connection) (int64, error) {
 
 func (p *Probe) updateLocalLocalConn(t cc.CrossConnectEventType, id string, payload string,
 	src *localconn.Connection, dst *localconn.Connection) {
+	p.g.Lock()
+	defer p.g.Unlock()
 
 	srcInode, err := getLocalInode(src)
 	if err != nil {
@@ -183,16 +186,12 @@ func (p *Probe) updateLocalLocalConn(t cc.CrossConnectEventType, id string, payl
 	if err != nil {
 		return
 	}
-	p.crossConn[id] = &crossConnInodes{src: srcInode, dst: dstInode}
+	p.crossConn[id] = &crossConnInodes{src: srcInode, dst: dstInode, ns: src.NetworkService}
 
 	if t != cc.CrossConnectEventType_DELETE {
 		p.addCrossConnToGraph()
 	}
-	//	else {
-	//		if linkExists {
-	//			p.g.Unlink(srcNode, dstNode)
-	//		}
-	//	}
+	//TODO manage deletion
 }
 func (p *Probe) nodeExists(inode int64) *graph.Node {
 	filter := graph.NewElementFilter(filters.NewTermInt64Filter("Inode", inode))
@@ -205,8 +204,6 @@ func (p *Probe) nodeExists(inode int64) *graph.Node {
 
 func (p *Probe) addCrossConnToGraph() {
 	//TODO: lock the graph
-	//	p.g.Lock()
-	//	defer p.g.Unlock()
 	// --> end up with a deadlock...
 	for k, v := range p.crossConn {
 		s := p.nodeExists(v.src)
@@ -220,7 +217,7 @@ func (p *Probe) addCrossConnToGraph() {
 
 		if !p.g.AreLinked(s, d, nil) {
 			//Add link
-			p.g.NewEdge(graph.GenID(k), s, d, graph.Metadata{"Id": k})
+			p.g.NewEdge(graph.GenID(k), s, d, graph.Metadata{"nsm-crossconnect-id": k, "NetworkService": v.ns})
 		} else {
 			logging.GetLogger().Debugf("NSM: link for crossconnect id %v already exist in the graph", k)
 		}
@@ -228,7 +225,6 @@ func (p *Probe) addCrossConnToGraph() {
 }
 
 func (p *Probe) OnNodeAdded(n *graph.Node) {
-	logging.GetLogger().Debugf("NSM: OnNodeAdded")
 	if i, err := n.GetFieldInt64("Inode"); err == nil {
 		logging.GetLogger().Debugf("NSM: node added with inode %v", i)
 		p.addCrossConnToGraph()
