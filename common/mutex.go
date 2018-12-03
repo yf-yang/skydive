@@ -32,3 +32,8 @@ import (
 type RWMutex struct {
 	sync.RWMutex
 }
+
+// Mutex is a wrapper around sync.Mutex
+type Mutex struct {
+	sync.Mutex
+}

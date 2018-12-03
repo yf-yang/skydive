@@ -48,29 +48,120 @@ import (
 	//"k8s.io/client-go/util/homedir"
 )
 
-// remoteConnectionPair ...
-type remoteConnectionPair struct {
-	srcId   string
-	dstId   string
-	payload string
-	src     *localconn.Connection
-	dst     *localconn.Connection
-	bridge  *remoteconn.Connection
+type connection interface {
+	onEventDelete(*graph.Graph)
+	onEventUpdate(*graph.Graph)
 }
 
-type crossConnInodes struct {
-	src int64
-	dst int64
-	ns  string
+// baseConnectionPair base class of connections
+type baseConnectionPair struct {
+	payload  string
+	srcInode int64
+	dstInode int64
+	src      *localconn.Connection
+	dst      *localconn.Connection
+}
+
+type localConnectionPair struct {
+	baseConnectionPair
+	ID string
+}
+
+type remoteConnectionPair struct {
+	baseConnectionPair
+	bridge *remoteconn.Connection
+	srcID  string
+	dstID  string
+}
+
+func getNode(inode int64, g *graph.Graph) *graph.Node {
+	filter := graph.NewElementFilter(filters.NewTermInt64Filter("Inode", inode))
+	node := g.LookupFirstNode(filter)
+	if node == nil {
+		logging.GetLogger().Errorf("NSM: no node with inode %v", inode)
+	}
+	return node
+}
+
+func (pair *localConnectionPair) onEventUpdate(g *graph.Graph) {
+	g.Lock()
+	defer g.Unlock()
+	s := getNode(pair.srcInode, g)
+	d := getNode(pair.dstInode, g)
+	if s == nil || d == nil {
+		return
+	}
+	if !g.AreLinked(s, d, nil) {
+		g.NewEdge(
+			graph.GenID(pair.ID), s, d,
+			graph.Metadata{
+				"nsm-crossconnect-id": pair.ID,
+				"NetworkService":      pair.src.GetNetworkService(),
+			})
+		logging.GetLogger().Debugf("NSM: Add local link for Xcon %v", pair.ID)
+	} else {
+		logging.GetLogger().Debugf("NSM: link for local crossconnect id %v already exist in the graph", pair.ID)
+	}
+}
+func (pair *localConnectionPair) onEventDelete(g *graph.Graph) {
+	g.Lock()
+	defer g.Unlock()
+}
+
+func (pair *remoteConnectionPair) onEventUpdate(g *graph.Graph) {
+	if pair.src == nil || pair.dst == nil {
+		return
+	}
+	g.Lock()
+	defer g.Unlock()
+	s := getNode(pair.srcInode, g)
+	d := getNode(pair.dstInode, g)
+	if s == nil || d == nil {
+		return
+	}
+	if !g.AreLinked(s, d, nil) {
+		g.NewEdge(
+			graph.GenID(pair.srcID+pair.dstID), s, d,
+			graph.Metadata{
+				"nsm-source-crossconnect-id":      pair.srcID,
+				"nsm-destination-crossconnect-id": pair.dstID,
+				"NetworkService":                  pair.src.GetNetworkService(),
+			})
+		logging.GetLogger().Debugf("NSM: Add local link for remote Xcon pair %v & %v", pair.srcID, pair.dstID)
+	} else {
+		logging.GetLogger().Debugf("NSM: link for remote crossconnect id %v & %v already exist in the graph", pair.srcID, pair.dstID)
+	}
+}
+func (pair *remoteConnectionPair) onEventDelete(g *graph.Graph) {
+	if pair.src == nil || pair.dst == nil {
+		return
+	}
+	g.Lock()
+	defer g.Unlock()
+}
+
+type iNodeBuffer struct {
+	inodeAvail bool
+	// mapping from crossConnectID to connections
+	connections map[string]connection
+}
+
+type lookUpTableElement struct {
+	inode          int64
+	crossConnectID string
 }
 
 // Probe ...
 type Probe struct {
-	g              *graph.Graph
-	state          int64
-	nsmds          map[string]*grpc.ClientConn
-	remoteConnPool map[string]*remoteConnectionPair
-	crossConn      map[string]*crossConnInodes
+	common.Mutex
+	graph.DefaultGraphListener
+	g     *graph.Graph
+	state int64
+	nsmds map[string]*grpc.ClientConn
+	// mapping from iNode to correponding connections
+	iNodeConnectionPool map[int64]*iNodeBuffer
+	// mapping from bridgeID to iNode & crossConnectID designed for remote connections
+	remoteLookUpTable map[string]*lookUpTableElement
 }
 
 func (p *Probe) run() {
@@ -138,7 +229,7 @@ func (p *Probe) monitorCrossConnects(url string) {
 			return
 		}
 
-		for _, cconn := range event.CrossConnects {
+		for _, cconn := range event.GetCrossConnects() {
 			cconnStr := proto.MarshalTextString(cconn)
 
 			lSrc := cconn.GetLocalSource()
@@ -149,11 +240,13 @@ func (p *Probe) monitorCrossConnects(url string) {
 			switch {
 			case lSrc != nil && rSrc == nil && lDst != nil && rDst == nil:
 				logging.GetLogger().Debugf("NSM: Got local to local CrossConnect Msg \n%s", cconnStr)
-				p.updateLocalLocalConn(event.Type, cconn.Id, cconn.Payload, lSrc, lDst)
+				p.onConnLocalLocal(event.GetType(), cconn.GetId(), cconn.GetPayload(), lSrc, lDst)
 			case lSrc == nil && rSrc != nil && lDst != nil && rDst == nil:
-				p.updateRemoteLocalConn(event.Type, cconn.Id, cconn.Payload, rSrc, lDst)
+				logging.GetLogger().Debugf("NSM: Got remote to local CrossConnect Msg \n%s", cconnStr)
+				p.onConnRemoteLocal(event.GetType(), cconn.GetId(), cconn.GetPayload(), rSrc, lDst)
 			case lSrc != nil && rSrc == nil && lDst == nil && rDst != nil:
-				p.updateLocalRemoteConn(event.Type, cconn.Id, cconn.Payload, lSrc, rDst)
+				logging.GetLogger().Debugf("NSM: Got local to remote CrossConnect Msg \n%s", cconnStr)
+				p.onConnLocalRemote(event.GetType(), cconn.GetId(), cconn.GetPayload(), lSrc, rDst)
 			default:
 				logging.GetLogger().Errorf("Error parsing CrossConnect \n%s", cconnStr)
 			}
@@ -161,81 +254,38 @@ func (p *Probe) monitorCrossConnects(url string) {
 	}
 }
 
-//TODO: consider moving this function to
-// https://github.com/ligato/networkservicemesh/blob/master/controlplane/pkg/apis/local/connection/mechanism_helpers.go
-func getLocalInode(conn *localconn.Connection) (int64, error) {
-	inodeStr := conn.Mechanism.Parameters[localconn.NetNsInodeKey]
-	inode, err := strconv.ParseInt(inodeStr, 10, 64)
-	if err != nil {
-		logging.GetLogger().Errorf("NSM: error converting inode %s to int64", inodeStr)
-		return 0, err
-	}
-	return inode, nil
-}
-
-func (p *Probe) updateLocalLocalConn(t cc.CrossConnectEventType, id string, payload string,
-	src *localconn.Connection, dst *localconn.Connection) {
-	p.g.Lock()
-	defer p.g.Unlock()
-
-	srcInode, err := getLocalInode(src)
-	if err != nil {
-		return
-	}
-	dstInode, err := getLocalInode(dst)
-	if err != nil {
-		return
-	}
-	p.crossConn[id] = &crossConnInodes{src: srcInode, dst: dstInode, ns: src.NetworkService}
-
-	if t != cc.CrossConnectEventType_DELETE {
-		p.addCrossConnToGraph()
-	}
-	//TODO manage deletion
-}
-func (p *Probe) nodeExists(inode int64) *graph.Node {
-	filter := graph.NewElementFilter(filters.NewTermInt64Filter("Inode", inode))
-	node := p.g.LookupFirstNode(filter)
-	if node == nil {
-		logging.GetLogger().Debugf("NSM: no node with inode %v", inode)
-	}
-	return node
-}
-
-func (p *Probe) addCrossConnToGraph() {
-	//TODO: lock the graph
-	// --> end up with a deadlock...
-	for k, v := range p.crossConn {
-		s := p.nodeExists(v.src)
-		if s == nil {
-			return
-		}
-		d := p.nodeExists(v.dst)
-		if d == nil {
-			return
-		}
-
-		if !p.g.AreLinked(s, d, nil) {
-			//Add link
-			p.g.NewEdge(graph.GenID(k), s, d, graph.Metadata{"nsm-crossconnect-id": k, "NetworkService": v.ns})
-		} else {
-			logging.GetLogger().Debugf("NSM: link for crossconnect id %v already exist in the graph", k)
-		}
-	}
-}
-
+// OnNodeAdded event
 func (p *Probe) OnNodeAdded(n *graph.Node) {
 	if i, err := n.GetFieldInt64("Inode"); err == nil {
 		logging.GetLogger().Debugf("NSM: node added with inode %v", i)
-		p.addCrossConnToGraph()
+		go func() {
+			p.Lock()
+			defer p.Unlock()
+			nodeBuf := p.tryGetBuffer(i)
+			nodeBuf.inodeAvail = true
+			for _, pair := range nodeBuf.connections {
+				go pair.onEventUpdate(p.g)
+			}
+		}()
 	}
 }
 
-func (p *Probe) OnNodeUpdated(n *graph.Node) { return }
-func (p *Probe) OnNodeDeleted(n *graph.Node) { return }
-func (p *Probe) OnEdgeUpdated(e *graph.Edge) { return }
-func (p *Probe) OnEdgeAdded(e *graph.Edge)   { return }
-func (p *Probe) OnEdgeDeleted(e *graph.Edge) { return }
+// OnNodeDeleted event
+func (p *Probe) OnNodeDeleted(n *graph.Node) {
+	if i, err := n.GetFieldInt64("Inode"); err == nil {
+		logging.GetLogger().Debugf("NSM: node deleted with inode %v", i)
+		go func() {
+			p.Lock()
+			defer p.Unlock()
+			nodeBuf := p.iNodeConnectionPool[i]
+			nodeBuf.inodeAvail = false
+			for _, pair := range nodeBuf.connections {
+				pair.onEventDelete(p.g)
+			}
+			p.tryDeleteBuffer(i)
+		}()
+	}
+}
 
 // Start ...
 func (p *Probe) Start() {
@@ -255,13 +305,12 @@ func (p *Probe) Stop() {
 // NewNsmProbe ...
 func NewNsmProbe(g *graph.Graph) (*Probe, error) {
 	probe := &Probe{
-		g:              g,
-		nsmds:          make(map[string]*grpc.ClientConn),
-		remoteConnPool: make(map[string]*remoteConnectionPair),
-		crossConn:      make(map[string]*crossConnInodes),
+		g:                   g,
+		nsmds:               make(map[string]*grpc.ClientConn),
+		iNodeConnectionPool: make(map[int64]*iNodeBuffer),
+		remoteLookUpTable:   make(map[string]*lookUpTableElement),
 	}
 	atomic.StoreInt64(&probe.state, common.StoppedState)
-
 	return probe, nil
 }
 
@@ -278,82 +327,232 @@ func monitorNSM(client cc.MonitorCrossConnectClient) {
 	//wait for a chan to close conn?
 }
 
-func (p *Probe) updateRemoteLocalConn(t cc.CrossConnectEventType, id string, payload string,
+//TODO: consider moving this function to
+// https://github.com/ligato/networkservicemesh/blob/master/controlplane/pkg/apis/local/connection/mechanism_helpers.go
+func getLocalInode(conn *localconn.Connection) (int64, error) {
+	inodeStr := conn.Mechanism.Parameters[localconn.NetNsInodeKey]
+	inode, err := strconv.ParseInt(inodeStr, 10, 64)
+	if err != nil {
+		logging.GetLogger().Errorf("NSM: error converting inode %s to int64", inodeStr)
+		return 0, err
+	}
+	return inode, nil
+}
+
+func (p *Probe) tryGetBuffer(inode int64) *iNodeBuffer {
+	NodeBuf, ok := p.iNodeConnectionPool[inode]
+	if !ok {
+		NodeBuf = &iNodeBuffer{
+			connections: make(map[string]connection),
+		}
+		p.iNodeConnectionPool[inode] = NodeBuf
+	}
+	return NodeBuf
+}
+
+func (p *Probe) tryDeleteBuffer(inode int64) {
+	nodeBuf, ok := p.iNodeConnectionPool[inode]
+	if !ok {
+		logging.GetLogger().Errorf("Inode not found %v", inode)
+		return
+	}
+	if !nodeBuf.inodeAvail && len(nodeBuf.connections) == 0 {
+		delete(p.iNodeConnectionPool, inode)
+		logging.GetLogger().Debugf("Remove Inode %v", inode)
+	}
+}
+
+func (p *Probe) deleteConnectionPair(inode int64, id string) (connection, bool) {
+	nodeBuf, ok := p.iNodeConnectionPool[inode]
+	if !ok {
+		logging.GetLogger().Errorf("Inode not found %v", inode)
+		return nil, false
+	}
+	pair, ok := nodeBuf.connections[id]
+	if !ok {
+		logging.GetLogger().Errorf("Crossconnect %s not found in Inode %v", id, inode)
+		return nil, false
+	}
+	delete(nodeBuf.connections, id)
+	logging.GetLogger().Errorf("Remove Crossconnect %s from Inode %v", id, inode)
+	return pair, nodeBuf.inodeAvail
+}
+
+func (p *Probe) onConnLocalLocal(t cc.CrossConnectEventType, id string, payload string,
+	src *localconn.Connection, dst *localconn.Connection) {
+
+	srcInode, err := getLocalInode(src)
+	if err != nil {
+		return
+	}
+	dstInode, err := getLocalInode(dst)
+	if err != nil {
+		return
+	}
+
+	p.Lock()
+	defer p.Unlock()
+	if t != cc.CrossConnectEventType_DELETE {
+		srcNodeBuf := p.tryGetBuffer(srcInode)
+		dstNodeBuf := p.tryGetBuffer(dstInode)
+		pair := &localConnectionPair{
+			baseConnectionPair: baseConnectionPair{
+				payload:  payload,
+				srcInode: srcInode,
+				dstInode: dstInode,
+				src:      src,
+				dst:      dst,
+			},
+			ID: id,
+		}
+		srcNodeBuf.connections[id] = pair
+		dstNodeBuf.connections[id] = pair
+
+		if srcNodeBuf.inodeAvail && dstNodeBuf.inodeAvail {
+			pair.onEventUpdate(p.g)
+		}
+	} else {
+		srcPair, srcInodeAvail := p.deleteConnectionPair(srcInode, id)
+		dstPair, dstInodeAvail := p.deleteConnectionPair(dstInode, id)
+		if srcInodeAvail && dstInodeAvail {
+			switch {
+			case srcPair != nil:
+				srcPair.onEventDelete(p.g)
+			case dstPair != nil:
+				dstPair.onEventDelete(p.g)
+			default:
+				logging.GetLogger().Errorf("Local Connection %s lost", id)
+			}
+		}
+		p.tryDeleteBuffer(srcInode)
+		p.tryDeleteBuffer(dstInode)
+	}
+}
+
+func (p *Probe) onConnRemoteLocal(t cc.CrossConnectEventType, id string, payload string,
 	src *remoteconn.Connection, dst *localconn.Connection) {
 	dstInode, err := getLocalInode(dst)
 	if err != nil {
 		return
 	}
-	_ = dstInode
-	key := src.Id
+
+	bridgeID := src.GetId()
+	p.Lock()
+	defer p.Unlock()
 	if t != cc.CrossConnectEventType_DELETE {
-		if pair, ok := p.remoteConnPool[key]; ok {
-			if proto.Equal(pair.bridge, src) {
-				pair.dst = dst
-				// TODO: Update Graph
-			} else {
-				logging.GetLogger().Errorf("Different Remote Connection with id %s.", id)
-				return
+		dstNodeBuf := p.tryGetBuffer(dstInode)
+
+		srcEle, ok := p.remoteLookUpTable[bridgeID]
+		if !ok {
+			// the other xcon is not available
+			pair := &remoteConnectionPair{
+				baseConnectionPair: baseConnectionPair{
+					payload:  payload,
+					dstInode: dstInode,
+					dst:      dst,
+				},
+				bridge: src,
+				dstID:  id,
+			}
+			dstNodeBuf.connections[id] = pair
+			p.remoteLookUpTable[bridgeID] = &lookUpTableElement{
+				inode:          dstInode,
+				crossConnectID: id,
 			}
 		} else {
-			p.remoteConnPool[key] = &remoteConnectionPair{
-				dstId:   id,
-				payload: payload,
-				dst:     dst,
-				bridge:  src,
+			srcNodeBuf := p.iNodeConnectionPool[srcEle.inode]
+			pair := srcNodeBuf.connections[srcEle.crossConnectID].(*remoteConnectionPair)
+			if !proto.Equal(pair.bridge, src) {
+				logging.GetLogger().Errorf("Different Remote Connection with id %s.", bridgeID)
+				return
+			}
+			pair.baseConnectionPair.dstInode = dstInode
+			pair.baseConnectionPair.dst = dst
+			pair.dstID = id
+			dstNodeBuf.connections[id] = pair
+			delete(p.remoteLookUpTable, bridgeID)
+			if srcNodeBuf.inodeAvail && dstNodeBuf.inodeAvail {
+				pair.onEventUpdate(p.g)
 			}
 		}
 	} else {
-		if pair, ok := p.remoteConnPool[key]; ok {
-			if pair.bridge == nil {
-				defer delete(p.remoteConnPool, id)
-				// TODO: Update Graph
-			} else {
-				pair.bridge = nil
-			}
-		} else {
-			logging.GetLogger().Errorf("Unknown id to delete: %s.", id)
-			return
+		pair, dstInodeAvail := p.deleteConnectionPair(dstInode, id)
+		dstPair := pair.(*remoteConnectionPair)
+		if dstInodeAvail {
+			dstPair.onEventDelete(p.g)
 		}
+		// // In case one xcon is replaced (could that really happen?)
+		// p.remoteLookUpTable[bridgeID] = &lookUpTableElement {
+		// 	inode: dstInode,
+		// 	crossConnectID: id,
+		// }
+		dstPair.baseConnectionPair.dstInode = 0
+		dstPair.baseConnectionPair.dst = nil
+		dstPair.dstID = ""
+		p.tryDeleteBuffer(dstInode)
 	}
 }
 
-func (p *Probe) updateLocalRemoteConn(t cc.CrossConnectEventType, id string, payload string,
+func (p *Probe) onConnLocalRemote(t cc.CrossConnectEventType, id string, payload string,
 	src *localconn.Connection, dst *remoteconn.Connection) {
 	srcInode, err := getLocalInode(src)
 	if err != nil {
 		return
 	}
-	_ = srcInode
-	key := dst.Id
+
+	bridgeID := dst.GetId()
+	p.Lock()
+	defer p.Unlock()
 	if t != cc.CrossConnectEventType_DELETE {
-		if pair, ok := p.remoteConnPool[key]; ok {
-			if proto.Equal(pair.bridge, dst) {
-				pair.src = src
-				// TODO: Update Graph
-			} else {
-				logging.GetLogger().Errorf("Different Remote Connection with id %s.", id)
-				return
+		srcNodeBuf := p.tryGetBuffer(srcInode)
+
+		dstEle, ok := p.remoteLookUpTable[bridgeID]
+		if !ok {
+			// the other xcon is not available
+			pair := &remoteConnectionPair{
+				baseConnectionPair: baseConnectionPair{
+					payload:  payload,
+					srcInode: srcInode,
+					src:      src,
+				},
+				bridge: dst,
+				srcID:  id,
+			}
+			srcNodeBuf.connections[id] = pair
+			p.remoteLookUpTable[bridgeID] = &lookUpTableElement{
+				inode:          srcInode,
+				crossConnectID: id,
 			}
 		} else {
-			p.remoteConnPool[key] = &remoteConnectionPair{
-				srcId:   id,
-				payload: payload,
-				src:     src,
-				bridge:  dst,
+			dstNodeBuf := p.iNodeConnectionPool[dstEle.inode]
+			pair := dstNodeBuf.connections[dstEle.crossConnectID].(*remoteConnectionPair)
+			if !proto.Equal(pair.bridge, dst) {
+				logging.GetLogger().Errorf("Different Remote Connection with id %s.", bridgeID)
+				return
+			}
+			pair.baseConnectionPair.srcInode = srcInode
+			pair.baseConnectionPair.src = src
+			pair.srcID = id
+			srcNodeBuf.connections[id] = pair
+			delete(p.remoteLookUpTable, bridgeID)
+			if dstNodeBuf.inodeAvail && srcNodeBuf.inodeAvail {
+				pair.onEventUpdate(p.g)
 			}
 		}
 	} else {
-		if pair, ok := p.remoteConnPool[key]; ok {
-			if pair.bridge == nil {
-				defer delete(p.remoteConnPool, id)
-				// TODO: Update Graph
-			} else {
-				pair.bridge = nil
-			}
-		} else {
-			logging.GetLogger().Errorf("Unknown id to delete: %s.", id)
-			return
+		pair, srcInodeAvail := p.deleteConnectionPair(srcInode, id)
+		srcPair := pair.(*remoteConnectionPair)
+		if srcInodeAvail {
+			srcPair.onEventDelete(p.g)
 		}
+		// // In case one xcon is replaced (could that really happen?)
+		// p.remoteLookUpTable[bridgeID] = &lookUpTableElement {
+		// 	inode: srcInode,
+		// 	crossConnectID: id,
+		// }
+		srcPair.baseConnectionPair.srcInode = 0
+		srcPair.baseConnectionPair.src = nil
+		srcPair.srcID = ""
+		p.tryDeleteBuffer(srcInode)
 	}
 }
