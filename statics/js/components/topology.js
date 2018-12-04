@@ -309,6 +309,8 @@ var TopologyComponent = {
     };
     this.graph.addHandler(emphasizeWatcher);
 
+    setInterval(this.emphasize, 500);
+
     this.syncTopo = debounce(this.graph.syncRequest.bind(this.graph), 300);
 
     $(this.$el).find('.content').resizable({

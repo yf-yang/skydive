@@ -452,8 +452,8 @@ TopologyGraphLayout.prototype = {
   linkStrength: function(e) {
     var strength = 0.9;
 
-    if ((e.source.metadata.Type === "netns") && (e.target.metadata.Type === "netns"))
-      return 0.01;
+    /*if ((e.source.metadata.Type === "netns") && (e.target.metadata.Type === "netns"))
+      return 0.01;*/
 
      return strength;
  },
@@ -679,14 +679,14 @@ TopologyGraphLayout.prototype = {
   },
 
   hasOutsideLink: function(group) {
-    var members = group.members;
+    /*var members = group.members;
     for (var i in members) {
       var d = members[i], links = d.links;
       for (var j in links) {
         var e = links[j];
         if (e.metadata.RelationType !== "ownership" && e.source.group !== e.source.target) return true;
       }
-    }
+    }*/
 
     return false;
   },
@@ -1235,6 +1235,7 @@ TopologyGraphLayout.prototype = {
 
       if (members.indexOf(e.source) < 0 || members.indexOf(e.target) < 0) {
         source = e.source; target = e.target;
+
         if (source.group === group && target.group) {
           this.delCollapseLinks(target.group, group.owner);
           if (target.group.collapsed) {
