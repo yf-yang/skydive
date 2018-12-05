@@ -91,13 +91,27 @@ func (pair *localConnectionPair) onEventUpdate(g *graph.Graph) {
 	if s == nil || d == nil {
 		return
 	}
+	metadata := graph.Metadata{
+		"CrossConnectID": pair.ID,
+		"NetworkService": pair.src.GetNetworkService(),
+		"Payload":        pair.payload,
+		"Source": map[string]interface{}{
+			"IP":                  pair.src.GetContext()["src_ip"],
+			"MechanismType":       pair.src.GetMechanism().GetType().String(),
+			"MechanismParameters": pair.src.GetMechanism().GetParameters(),
+			"Labels":              pair.src.GetLabels(),
+		},
+		"Destination": map[string]interface{}{
+			"IP":                  pair.dst.GetContext()["dst_ip"],
+			"MechanismType":       pair.src.GetMechanism().GetType().String(),
+			"MechanismParameters": pair.dst.GetMechanism().GetParameters(),
+			"Labels":              pair.dst.GetLabels(),
+		},
+	}
 	if !g.AreLinked(s, d, nil) {
 		g.NewEdge(
 			graph.GenID(pair.ID), s, d,
-			graph.Metadata{
-				"nsm-crossconnect-id": pair.ID,
-				"NetworkService":      pair.src.GetNetworkService(),
-			})
+			metadata)
 		logging.GetLogger().Debugf("NSM: Add local link for Xcon %v", pair.ID)
 	} else {
 		logging.GetLogger().Debugf("NSM: link for local crossconnect id %v already exist in the graph", pair.ID)
@@ -119,14 +133,34 @@ func (pair *remoteConnectionPair) onEventUpdate(g *graph.Graph) {
 	if s == nil || d == nil {
 		return
 	}
+	metadata := graph.Metadata{
+		"SourceCrossConnectID":      pair.srcID,
+		"DestinationCrossConnectID": pair.dstID,
+		"NetworkService":            pair.src.GetNetworkService(),
+		"Payload":                   pair.payload,
+		"Source": map[string]interface{}{
+			"IP":                     pair.src.GetContext()["src_ip"],
+			"MechanismType":          pair.src.GetMechanism().GetType().String(),
+			"MechanismParameters":    pair.src.GetMechanism().GetParameters(),
+			"Labels":                 pair.src.GetLabels(),
+			"SourceNSM":              pair.bridge.GetSourceNetworkServiceManagerName(),
+			"DestinationNSM":         pair.bridge.GetDestinationNetworkServiceManagerName(),
+			"NetworkServiceEndpoint": pair.bridge.GetNetworkServiceEndpointName(),
+		},
+		"Destination": map[string]interface{}{
+			"IP":                     pair.dst.GetContext()["dst_ip"],
+			"MechanismType":          pair.src.GetMechanism().GetType().String(),
+			"MechanismParameters":    pair.dst.GetMechanism().GetParameters(),
+			"Labels":                 pair.dst.GetLabels(),
+			"SourceNSM":              pair.bridge.GetSourceNetworkServiceManagerName(),
+			"DestinationNSM":         pair.bridge.GetDestinationNetworkServiceManagerName(),
+			"NetworkServiceEndpoint": pair.bridge.GetNetworkServiceEndpointName(),
+		},
+	}
 	if !g.AreLinked(s, d, nil) {
 		g.NewEdge(
 			graph.GenID(pair.srcID+pair.dstID), s, d,
-			graph.Metadata{
-				"nsm-source-crossconnect-id":      pair.srcID,
-				"nsm-destination-crossconnect-id": pair.dstID,
-				"NetworkService":                  pair.src.GetNetworkService(),
-			})
+			metadata)
 		logging.GetLogger().Debugf("NSM: Add local link for remote Xcon pair %v & %v", pair.srcID, pair.dstID)
 	} else {
 		logging.GetLogger().Debugf("NSM: link for remote crossconnect id %v & %v already exist in the graph", pair.srcID, pair.dstID)
