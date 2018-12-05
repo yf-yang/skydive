@@ -463,7 +463,7 @@ TopologyGraphLayout.prototype = {
 
     // application
     if ((e.source.metadata.Type === "netns") && (e.target.metadata.Type === "netns"))
-      distance = 200;
+      distance = 300;
 
     if (e.source.group !== e.target.group) {
       if (e.source.isGroupOwner()) {
@@ -718,14 +718,14 @@ TopologyGraphLayout.prototype = {
       noc = 0; edges = target.edges;
       for (i in edges) {
         metadata = edges[i].metadata;
-        if (metadata.RelationType !== "ownership" && target.metadata.Type !== "bridge" && metadata.Type !== "vlan" && ++noc >= 2) this.delLink(target.linkToParent);
+        //if (metadata.RelationType !== "ownership" && target.metadata.Type !== "bridge" && metadata.Type !== "vlan" && ++noc >= 2) this.delLink(target.linkToParent);
       }
     }
     if (Object.keys(source.edges).length >= 2 && source.linkToParent) {
       noc = 0; edges = link.source.edges;
       for (i in edges) {
         metadata = edges[i].metadata;
-        if (metadata.RelationType !== "ownership" && source.metadata.Type !== "bridge" && metadata.Type !== "vlan" && ++noc >= 2) this.delLink(source.linkToParent);
+        //if (metadata.RelationType !== "ownership" && source.metadata.Type !== "bridge" && metadata.Type !== "vlan" && ++noc >= 2) this.delLink(source.linkToParent);
       }
     }
 

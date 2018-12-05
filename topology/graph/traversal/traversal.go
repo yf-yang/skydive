@@ -1685,7 +1685,8 @@ func (te *GraphTraversalE) SubGraph(ctx StepContext, s ...interface{}) *GraphTra
 		}
 
 		if !memory.EdgeAdded(e) {
-			return &GraphTraversal{error: errors.New("Error while adding edge to SubGraph")}
+			continue
+			//return &GraphTraversal{error: errors.New("Error while adding edge to SubGraph")}
 		}
 	}
 
