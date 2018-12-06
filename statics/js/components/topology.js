@@ -212,6 +212,14 @@ var TopologyComponent = {
                title="Docker">\
           <object-detail :object="currentNodeDocker"></object-detail>\
         </panel>\
+        <panel id="edge-src-metadata" v-if="currentEdgeSrc"\
+                title="Source">\
+          <object-detail :object="currentEdgeSrc"></object-detail>\
+        </panel>\
+        <panel id="edge-dst-metadata" v-if="currentEdgeDst"\
+          title="Destination">\
+          <object-detail :object="currentEdgeDst"></object-detail>\
+        </panel>\
         <panel id="k8s-metadata" v-if="currentNodeK8s"\
                title="K8s">\
           <object-detail :object="currentNodeK8s"></object-detail>\
@@ -436,7 +444,7 @@ var TopologyComponent = {
     currentEdgeMetadata: function() {
       if (!this.currentEdge) return null;
       return this.extractMetadata(this.currentEdge.metadata,
-        ['Directed']);
+        ['Directed', 'Source', 'Destination']);
     },
 
     currentNodeMetadata: function() {
@@ -454,6 +462,16 @@ var TopologyComponent = {
     currentNodeDocker: function() {
       if (!this.currentNodeMetadata || !this.currentNode.metadata.Docker) return null;
       return this.currentNode.metadata.Docker;
+    },
+
+    currentEdgeSrc: function() {
+      if (!this.currentEdgeMetadata || !this.currentEdge.metadata.Source) return null;
+      return this.currentEdge.metadata.Source;
+    },
+
+    currentEdgeDst: function() {
+      if (!this.currentEdgeMetadata || !this.currentEdge.metadata.Destination) return null;
+      return this.currentEdge.metadata.Destination;
     },
 
     currentNodeK8s: function() {
