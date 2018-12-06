@@ -251,7 +251,7 @@ var TopologyGraphLayout = function(vm, selector) {
   this.height = $(selector).height();
 
   this.simulation = d3.forceSimulation(Object.values(this.nodes))
-    .force("charge", d3.forceManyBody().strength(-600))
+    .force("charge", d3.forceManyBody().strength(-800))
     .force("link", d3.forceLink(Object.values(this.links)).distance(this.linkDistance).strength(0.9).iterations(2))
     .force("collide", d3.forceCollide().radius(90).strength(0.2).iterations(1))
     .force("center", d3.forceCenter(this.width / 2, this.height / 2))
@@ -262,7 +262,7 @@ var TopologyGraphLayout = function(vm, selector) {
   var stop = function() {
     this.simulation.stop();
   }
-  this.simulationStop = debounce(stop.bind(self), 2000);
+  this.simulationStop = debounce(stop.bind(self), 3000);
 
   this.zoom = d3.zoom()
     .on("zoom", this.zoomed.bind(this));
@@ -317,6 +317,18 @@ var TopologyGraphLayout = function(vm, selector) {
   defsMarker("egress", "deny", "end");
   defsMarker("egress", "allow", "begin");
   defsMarker("egress", "allow", "end");
+
+  self.svg.append("defs").append("marker")
+    .attr("id", "arrowhead")
+    .attr("viewBox", "0 -5 10 10")
+    .attr("refX", 4)
+    .attr("refY", 0)
+    .attr("markerWidth", 4)
+    .attr("markerHeight", 4)
+    .attr("orient", "auto")
+    .append("path")
+      .attr("fill", "#111")
+      .attr("d", "M0,-1L1,0L0,1");
 
   this.g = this.svg.append("g");
 
@@ -465,15 +477,18 @@ TopologyGraphLayout.prototype = {
     if ((e.source.metadata.Type === "netns") && (e.target.metadata.Type === "netns"))
       distance = 300;
 
+    if (e.source.host != e.target.host)
+      distance *= 2;
+
     if (e.source.group !== e.target.group) {
       if (e.source.isGroupOwner()) {
-        coeff = e.source.group.collapsed ? 40 : 60;
+        coeff = e.source.group.collapsed ? 40 : 70;
         if (e.source.group.memberArray) {
           distance += coeff * (e.source.group.memberArray.length + e.source.group._memberArray.length) / 10;
         }
       }
       if (e.target.isGroupOwner()) {
-        coeff = e.target.group.collapsed ? 40 : 60;
+        coeff = e.target.group.collapsed ? 40 : 70;
         if (e.target.group.memberArray) {
           distance += coeff * (e.target.group.memberArray.length + e.target.group._memberArray.length) / 10;
         }
@@ -1563,6 +1578,10 @@ TopologyGraphLayout.prototype = {
 
   arrowhead: function(link) {
     let none = "url(#arrowhead-none)";
+
+    if (link.metadata["Directed"]) {
+      return "url(#arrowhead)";
+    }
 
     if (link.source.metadata.Type !== "networkpolicy") {
       return none

@@ -107,10 +107,11 @@ func (pair *localConnectionPair) onEventUpdate(g *graph.Graph) {
 			"MechanismParameters": pair.dst.GetMechanism().GetParameters(),
 			"Labels":              pair.dst.GetLabels(),
 		},
+		"Directed": "true",
 	}
 	if !g.AreLinked(s, d, nil) {
 		g.NewEdge(
-			graph.GenID(pair.ID), s, d,
+			graph.GenID(), s, d,
 			metadata)
 		logging.GetLogger().Debugf("NSM: Add local link for Xcon %v", pair.ID)
 	} else {
@@ -156,10 +157,11 @@ func (pair *remoteConnectionPair) onEventUpdate(g *graph.Graph) {
 			"DestinationNSM":         pair.bridge.GetDestinationNetworkServiceManagerName(),
 			"NetworkServiceEndpoint": pair.bridge.GetNetworkServiceEndpointName(),
 		},
+		"Directed": "true",
 	}
 	if !g.AreLinked(s, d, nil) {
 		g.NewEdge(
-			graph.GenID(pair.srcID+pair.dstID), s, d,
+			graph.GenID(), s, d,
 			metadata)
 		logging.GetLogger().Debugf("NSM: Add local link for remote Xcon pair %v & %v", pair.srcID, pair.dstID)
 	} else {
