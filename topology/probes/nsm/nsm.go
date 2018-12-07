@@ -76,7 +76,6 @@ type remoteConnectionPair struct {
 
 // easyjson:json
 type baseConnectionMetadata struct {
-	IP                  string
 	MechanismType       string
 	MechanismParameters map[string]string
 	Labels              map[string]string
@@ -84,6 +83,7 @@ type baseConnectionMetadata struct {
 
 // easyjson:json
 type localConnectionMetadata struct {
+	IP                  string
 	baseConnectionMetadata
 }
 
@@ -142,16 +142,16 @@ func (pair *localConnectionPair) onEventUpdate(g *graph.Graph) {
 				NetworkService: pair.src.GetNetworkService(),
 				Payload:        pair.payload,
 				Source: localConnectionMetadata{
+					IP: pair.src.GetContext()["src_ip"],
 					baseConnectionMetadata: baseConnectionMetadata{
-						IP:                  pair.src.GetContext()["src_ip"],
 						MechanismType:       pair.src.GetMechanism().GetType().String(),
 						MechanismParameters: pair.src.GetMechanism().GetParameters(),
 						Labels:              pair.src.GetLabels(),
 					},
 				},
 				Destination: localConnectionMetadata{
+					IP: pair.src.GetContext()["dst_ip"],
 					baseConnectionMetadata: baseConnectionMetadata{
-						IP:                  pair.dst.GetContext()["dst_ip"],
 						MechanismType:       pair.dst.GetMechanism().GetType().String(),
 						MechanismParameters: pair.dst.GetMechanism().GetParameters(),
 						Labels:              pair.dst.GetLabels(),
@@ -194,16 +194,16 @@ func (pair *remoteConnectionPair) onEventUpdate(g *graph.Graph) {
 				NetworkService: pair.src.GetNetworkService(),
 				Payload:        pair.payload,
 				Source: localConnectionMetadata{
+					IP: pair.src.GetContext()["src_ip"],
 					baseConnectionMetadata: baseConnectionMetadata{
-						IP:                  pair.src.GetContext()["src_ip"],
 						MechanismType:       pair.src.GetMechanism().GetType().String(),
 						MechanismParameters: pair.src.GetMechanism().GetParameters(),
 						Labels:              pair.src.GetLabels(),
 					},
 				},
 				Destination: localConnectionMetadata{
+					IP: pair.src.GetContext()["dst_ip"],
 					baseConnectionMetadata: baseConnectionMetadata{
-						IP:                  pair.dst.GetContext()["dst_ip"],
 						MechanismType:       pair.dst.GetMechanism().GetType().String(),
 						MechanismParameters: pair.dst.GetMechanism().GetParameters(),
 						Labels:              pair.dst.GetLabels(),
